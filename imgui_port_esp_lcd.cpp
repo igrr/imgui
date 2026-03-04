@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Ivan Grokhotkov
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: Apache-2.0
  *
  * ImGui port for ESP-IDF using esp_lcd and a software rasterizer.
  *

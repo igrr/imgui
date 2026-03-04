@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Ivan Grokhotkov
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: Apache-2.0
  *
  * ImGui QEMU test application.
  *
