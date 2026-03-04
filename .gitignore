@@ -1,0 +1,9 @@
+build
+sdkconfig
+sdkconfig.old
+.envrc
+dependencies.lock
+managed_components
+doxygen/
+.DS_Store
+__pycache__/
