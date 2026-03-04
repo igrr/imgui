@@ -1,0 +1,10 @@
+dependencies:
+  protocol_examples_common:
+    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+  igrr/hotreload:
+    version: "*"
+  igrr/imgui:
+    version: "*"
+    override_path: "../../.."
+  espressif/esp_lcd_qemu_rgb:
+    version: "*"
