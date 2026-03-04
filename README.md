@@ -1,13 +1,11 @@
 # ImGui ESP-IDF Component
 
-[Dear ImGui](https://github.com/ocornut/imgui) v1.92.6 packaged as an ESP-IDF component, with a software-renderer backend for `esp_lcd` panels.
+[Dear ImGui](https://github.com/ocornut/imgui) packaged as an ESP-IDF component, with a software-renderer backend for `esp_lcd` panels.
 
-## Features
-
-- Bundles the Dear ImGui library (upstream, unmodified)
-- Software rasterizer: renders ImGui draw lists directly into a framebuffer — no GPU required
-- `esp_lcd` backend: flushes the framebuffer via `esp_lcd_panel_draw_bitmap()`
-- Supports 32-bit direct output (e.g. QEMU) and 16-bit RGB565 output with automatic conversion
+- Bundles the unmodified upstream Dear ImGui library
+- Uses a software rasterizer written by [LAK132](https://github.com/LAK132)
+- Works with any LCD supported by `esp_lcd` component
+- Can be tested on the host with QEMU
 
 ## Usage
 
