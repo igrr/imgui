@@ -1,0 +1,11 @@
+menu "ImGui Test Configuration"
+
+    config IMGUI_TEST_LCD_WIDTH
+        int "LCD width in pixels"
+        default 800
+
+    config IMGUI_TEST_LCD_HEIGHT
+        int "LCD height in pixels"
+        default 480
+
+endmenu

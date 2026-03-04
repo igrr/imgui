@@ -1,0 +1,6 @@
+dependencies:
+  espressif/esp_lcd_qemu_rgb:
+    version: ^1
+  igrr/imgui:
+    version: ^0.1.0
+    override_path: '../../../'
