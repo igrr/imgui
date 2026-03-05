@@ -48,13 +48,15 @@ extern "C" void app_main(void)
     bsp_display_backlight_on();
 
     /* ---- ImGui port ---- */
+    imgui_port_renderer_handle_t renderer = nullptr;
+    ESP_ERROR_CHECK(imgui_port_new_renderer_rgb888(&renderer));
+
     const imgui_port_cfg_t port_cfg = {
         .panel_handle  = panel,
         .width         = BSP_LCD_H_RES,
         .height        = BSP_LCD_V_RES,
         .render_buf    = nullptr,
-        .direct_output = false,
-        .swap_rb       = false,
+        .renderer      = renderer,
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
 

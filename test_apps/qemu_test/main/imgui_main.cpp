@@ -55,15 +55,19 @@ extern "C" void app_main(void)
 
     /* ------------------------------------------------------------------ */
     /* 3. Initialise the imgui port                                        */
+    /*                                                                     */
+    /* QEMU's SDL display uses BGRA8888 byte order, which corresponds to   */
+    /* ARGB8888 as a 32-bit word on little-endian.                         */
     /* ------------------------------------------------------------------ */
+    imgui_port_renderer_handle_t renderer = nullptr;
+    ESP_ERROR_CHECK(imgui_port_new_renderer_argb8888(&renderer));
+
     const imgui_port_cfg_t port_cfg = {
         .panel_handle  = panel,
         .width         = LCD_W,
         .height        = LCD_H,
         .render_buf    = qemu_fb,
-        .direct_output = true,
-        /* QEMU's SDL display uses BGRA8888; the renderer produces RGBA8888. */
-        .swap_rb       = true,
+        .renderer      = renderer,
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
 

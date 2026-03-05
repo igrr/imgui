@@ -8,7 +8,7 @@
  *   ImGui draw lists
  *       → software rasterizer (softraster, adapted from LAK132/ImSoft)
  *       → RGBA8888 framebuffer (internal or external)
- *       → [optional] RGB565 conversion
+ *       → [optional] pixel format conversion via renderer
  *       → esp_lcd_panel_draw_bitmap()
  */
 
@@ -28,6 +28,17 @@
 static const char *TAG = "imgui_port";
 
 /* -------------------------------------------------------------------------- */
+/*  Renderer (private definition)                                              */
+/* -------------------------------------------------------------------------- */
+
+typedef void (*imgui_port_convert_fn_t)(color32_t *src, void *dst, int n_pixels);
+
+struct imgui_port_renderer_t {
+    int output_bpp;                    /* bits per pixel of the output format */
+    imgui_port_convert_fn_t convert;   /* NULL → use render buffer as-is */
+};
+
+/* -------------------------------------------------------------------------- */
 /*  State                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -40,14 +51,12 @@ static int64_t                s_last_us  = 0;
 static color32_t *s_render_buf     = nullptr;
 static bool       s_render_buf_ext = false; /* true → we don't own it */
 
-/* RGB565 output buffer – only allocated when direct_output == false. */
-static uint16_t  *s_lcd_buf    = nullptr;
+/* Output buffer for formats that differ from the render buffer (RGB888, RGB565).
+ * NULL when the renderer works in-place (32 bpp formats). */
+static void      *s_lcd_buf    = nullptr;
 
-/* Whether to skip the RGBA→RGB565 conversion step */
-static bool       s_direct_out = false;
-
-/* Whether to swap R and B channels in the output */
-static bool       s_swap_rb    = false;
+/* Renderer configuration */
+static imgui_port_renderer_handle_t s_renderer = nullptr;
 
 /* Font atlas wrapped as an ImSoft alpha-8 texture */
 static texture_alpha8_t *s_font_tex = nullptr;
@@ -66,14 +75,89 @@ static void *psram_alloc(size_t size)
     return p;
 }
 
-/**
- * Convert a color32_t pixel (RGBA8888, R at byte-0) to packed 16-bit RGB565.
+/* -------------------------------------------------------------------------- */
+/*  Pixel format conversion functions                                          */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * ARGB8888 (as a 32-bit word on little-endian: 0xAARRGGBB, i.e. B,G,R,A in
+ * memory byte order).  The internal render buffer is ABGR8888 (R,G,B,A in
+ * memory), so we swap R↔B in-place.
  */
-static inline uint16_t rgba_to_rgb565(const color32_t &c)
+static void convert_argb8888(color32_t *src, void * /*dst*/, int n)
 {
-    return (static_cast<uint16_t>(c.r >> 3) << 11)
-         | (static_cast<uint16_t>(c.g >> 2) <<  5)
-         | (static_cast<uint16_t>(c.b >> 3));
+    for (int i = 0; i < n; ++i) {
+        uint8_t tmp = src[i].r;
+        src[i].r    = src[i].b;
+        src[i].b    = tmp;
+    }
+}
+
+/*
+ * RGB888 – strip the alpha byte, writing 3 bytes per pixel.
+ */
+static void convert_rgb888(color32_t *src, void *dst, int n)
+{
+    uint8_t *out = static_cast<uint8_t *>(dst);
+    for (int i = 0; i < n; ++i) {
+        out[i * 3 + 0] = src[i].r;
+        out[i * 3 + 1] = src[i].g;
+        out[i * 3 + 2] = src[i].b;
+    }
+}
+
+/*
+ * RGB565 – pack to 16-bit.
+ */
+static void convert_rgb565(color32_t *src, void *dst, int n)
+{
+    uint16_t *out = static_cast<uint16_t *>(dst);
+    for (int i = 0; i < n; ++i) {
+        out[i] = (static_cast<uint16_t>(src[i].r >> 3) << 11)
+               | (static_cast<uint16_t>(src[i].g >> 2) <<  5)
+               | (static_cast<uint16_t>(src[i].b >> 3));
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Renderer factory functions                                                 */
+/* -------------------------------------------------------------------------- */
+
+static esp_err_t new_renderer(int bpp, imgui_port_convert_fn_t fn,
+                              imgui_port_renderer_handle_t *out)
+{
+    if (!out) return ESP_ERR_INVALID_ARG;
+    auto *r = new (std::nothrow) imgui_port_renderer_t;
+    if (!r) return ESP_ERR_NO_MEM;
+    r->output_bpp = bpp;
+    r->convert    = fn;
+    *out = r;
+    return ESP_OK;
+}
+
+extern "C" esp_err_t imgui_port_new_renderer_argb8888(imgui_port_renderer_handle_t *out)
+{
+    return new_renderer(32, convert_argb8888, out);
+}
+
+extern "C" esp_err_t imgui_port_new_renderer_abgr8888(imgui_port_renderer_handle_t *out)
+{
+    return new_renderer(32, nullptr, out);
+}
+
+extern "C" esp_err_t imgui_port_new_renderer_rgb888(imgui_port_renderer_handle_t *out)
+{
+    return new_renderer(24, convert_rgb888, out);
+}
+
+extern "C" esp_err_t imgui_port_new_renderer_rgb565(imgui_port_renderer_handle_t *out)
+{
+    return new_renderer(16, convert_rgb565, out);
+}
+
+extern "C" void imgui_port_delete_renderer(imgui_port_renderer_handle_t handle)
+{
+    delete handle;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -123,13 +207,15 @@ static void sw_render(ImDrawData *draw_data, texture_t<color32_t> &screen)
 
 extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
 {
-    ESP_LOGI(TAG, "Initialising imgui port (%dx%d)", cfg->width, cfg->height);
+    if (!cfg || !cfg->renderer) return ESP_ERR_INVALID_ARG;
 
-    s_panel      = cfg->panel_handle;
-    s_width      = cfg->width;
-    s_height     = cfg->height;
-    s_direct_out = cfg->direct_output;
-    s_swap_rb    = cfg->swap_rb;
+    ESP_LOGI(TAG, "Initialising imgui port (%dx%d, %d bpp output)",
+             cfg->width, cfg->height, cfg->renderer->output_bpp);
+
+    s_panel    = cfg->panel_handle;
+    s_width    = cfg->width;
+    s_height   = cfg->height;
+    s_renderer = cfg->renderer;
 
     /* ---- Render buffer (RGBA8888 / color32_t) ---- */
     static_assert(sizeof(color32_t) == 4, "color32_t must be 4 bytes");
@@ -150,10 +236,10 @@ extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
         ESP_LOGI(TAG, "Allocated render buffer: %zu kB", render_bytes / 1024);
     }
 
-    /* ---- LCD output buffer (RGB565) – only when conversion is needed ---- */
-    if (!s_direct_out) {
-        const size_t lcd_bytes = (size_t)s_width * s_height * sizeof(uint16_t);
-        s_lcd_buf = static_cast<uint16_t *>(psram_alloc(lcd_bytes));
+    /* ---- Output buffer – only when the format differs from 32 bpp ---- */
+    if (s_renderer->output_bpp < 32) {
+        const size_t lcd_bytes = (size_t)s_width * s_height * s_renderer->output_bpp / 8;
+        s_lcd_buf = psram_alloc(lcd_bytes);
         if (!s_lcd_buf) {
             ESP_LOGE(TAG, "Failed to alloc LCD buffer (%zu bytes)", lcd_bytes);
             if (!s_render_buf_ext) heap_caps_free(s_render_buf);
@@ -200,7 +286,7 @@ extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
 
     s_last_us = esp_timer_get_time();
 
-    ESP_LOGI(TAG, "Ready (direct_output=%d)", (int)s_direct_out);
+    ESP_LOGI(TAG, "Ready");
     return ESP_OK;
 }
 
@@ -240,24 +326,20 @@ extern "C" void imgui_port_render(void)
     /* Rasterise all draw lists */
     sw_render(draw_data, screen);
 
-    /* Optional R↔B channel swap (e.g. for BGRA panels like QEMU BPP_32) */
-    if (s_swap_rb) {
-        for (int i = 0; i < n_pixels; ++i) {
-            uint8_t tmp        = s_render_buf[i].r;
-            s_render_buf[i].r  = s_render_buf[i].b;
-            s_render_buf[i].b  = tmp;
+    /* Convert and flush to panel */
+    if (s_renderer->convert) {
+        if (s_renderer->output_bpp == 32) {
+            /* In-place conversion (e.g. R↔B swap for ARGB8888) */
+            s_renderer->convert(s_render_buf, s_render_buf, n_pixels);
+            esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_render_buf);
+        } else {
+            /* Convert to separate output buffer (RGB888, RGB565, …) */
+            s_renderer->convert(s_render_buf, s_lcd_buf, n_pixels);
+            esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_lcd_buf);
         }
-    }
-
-    if (s_direct_out) {
-        /* Render buffer is in a format the panel accepts as-is (e.g. BPP_32) */
-        esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_render_buf);
     } else {
-        /* Convert RGBA8888 → RGB565 then flush */
-        for (int i = 0; i < n_pixels; ++i) {
-            s_lcd_buf[i] = rgba_to_rgb565(s_render_buf[i]);
-        }
-        esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_lcd_buf);
+        /* No conversion – render buffer is already in the target format */
+        esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_render_buf);
     }
 }
 
@@ -275,4 +357,5 @@ extern "C" void imgui_port_deinit(void)
     heap_caps_free(s_lcd_buf);
     s_render_buf = nullptr;
     s_lcd_buf    = nullptr;
+    s_renderer   = nullptr;
 }

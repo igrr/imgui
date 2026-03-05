@@ -57,14 +57,16 @@ extern "C" void app_main(void)
     void *qemu_fb = nullptr;
     ESP_ERROR_CHECK(esp_lcd_rgb_qemu_get_frame_buffer(panel, &qemu_fb));
 
-    /* ---- ImGui port ---- */
+    /* ---- ImGui port (QEMU uses ARGB8888 / BGRA byte order) ---- */
+    imgui_port_renderer_handle_t renderer = nullptr;
+    ESP_ERROR_CHECK(imgui_port_new_renderer_argb8888(&renderer));
+
     const imgui_port_cfg_t port_cfg = {
         .panel_handle  = panel,
         .width         = LCD_W,
         .height        = LCD_H,
         .render_buf    = qemu_fb,
-        .direct_output = true,
-        .swap_rb       = true,
+        .renderer      = renderer,
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
 

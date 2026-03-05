@@ -14,6 +14,50 @@ extern "C" {
 #endif
 
 /**
+ * @brief Opaque renderer handle.
+ *
+ * Created by one of the imgui_port_new_renderer_*() factory functions.
+ * Encapsulates the output pixel format and conversion logic.  Only the
+ * factory function that is actually called (and its conversion routine)
+ * will be linked into the final binary – unused formats are eliminated
+ * by the linker's --gc-sections pass.
+ */
+typedef struct imgui_port_renderer_t *imgui_port_renderer_handle_t;
+
+/**
+ * @brief Create a renderer for ARGB8888 output (32 bpp, B at byte-0 on LE).
+ *
+ * Swaps R and B channels relative to the internal RGBA8888 render buffer.
+ * Suitable for displays that expect BGRA byte order (e.g. QEMU SDL in BPP_32
+ * mode, many DRM/KMS framebuffers).
+ */
+esp_err_t imgui_port_new_renderer_argb8888(imgui_port_renderer_handle_t *out_handle);
+
+/**
+ * @brief Create a renderer for ABGR8888 output (32 bpp, R at byte-0 on LE).
+ *
+ * No conversion – the internal render buffer is already in this format.
+ */
+esp_err_t imgui_port_new_renderer_abgr8888(imgui_port_renderer_handle_t *out_handle);
+
+/**
+ * @brief Create a renderer for RGB888 output (24 bpp, R at byte-0).
+ *
+ * Strips the alpha channel from the internal RGBA8888 buffer.
+ */
+esp_err_t imgui_port_new_renderer_rgb888(imgui_port_renderer_handle_t *out_handle);
+
+/**
+ * @brief Create a renderer for RGB565 output (16 bpp).
+ */
+esp_err_t imgui_port_new_renderer_rgb565(imgui_port_renderer_handle_t *out_handle);
+
+/**
+ * @brief Delete a renderer previously created by a factory function.
+ */
+void imgui_port_delete_renderer(imgui_port_renderer_handle_t handle);
+
+/**
  * @brief Configuration for imgui esp_lcd port
  */
 typedef struct {
@@ -22,7 +66,7 @@ typedef struct {
     int height;                          /*!< Display height in pixels */
 
     /**
-     * @brief Optional external render buffer (array of width*height color32_t = RGBA8888).
+     * @brief Optional external render buffer (array of width*height RGBA8888 pixels).
      *
      * If NULL the port allocates one internally, preferring PSRAM.
      * Supply an external buffer when you want to avoid a heap allocation –
@@ -32,22 +76,13 @@ typedef struct {
     void *render_buf;
 
     /**
-     * @brief When true, the render buffer is passed to esp_lcd_panel_draw_bitmap
-     *        as-is (no RGBA→RGB565 conversion).  Use this when the panel accepts
-     *        32-bit pixels (e.g. QEMU RGB panel in BPP_32 mode).
-     *        When false (default), an RGB565 conversion is performed first.
-     */
-    bool direct_output;
-
-    /**
-     * @brief When true, swap the Red and Blue channels before output.
+     * @brief Renderer handle defining the output pixel format.
      *
-     * The software renderer produces RGBA8888 (R at byte-0).  Some display
-     * controllers or host systems (e.g. QEMU's SDL window in BPP_32 mode)
-     * expect BGRA8888 (B at byte-0).  Set this to true in that case.
-     * Applies to both direct_output and RGB565 conversion paths.
+     * Must be created by one of the imgui_port_new_renderer_*() functions
+     * before calling imgui_port_init().  The port does NOT take ownership –
+     * call imgui_port_delete_renderer() after imgui_port_deinit() if desired.
      */
-    bool swap_rb;
+    imgui_port_renderer_handle_t renderer;
 } imgui_port_cfg_t;
 
 /**
