@@ -3,7 +3,9 @@ repos:
     rev: v6.0.0
     hooks:
     -   id: trailing-whitespace
+        exclude: ^API\.md$
     -   id: end-of-file-fixer
+        exclude: ^API\.md$
 
 -   repo: https://github.com/igrr/astyle_py.git
     rev: v1.1.0
