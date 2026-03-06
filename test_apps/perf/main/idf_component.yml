@@ -1,11 +1,6 @@
 dependencies:
-  protocol_examples_common:
-    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
-  igrr/hotreload:
-    version: "*"
   igrr/imgui:
     version: "*"
     override_path: "../../.."
   bsp_waveshare_esp32p4_module_dev_kit:
     path: "../../../bsp/bsp_waveshare_esp32p4_module_dev_kit"
-  
