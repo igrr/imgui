@@ -12,12 +12,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_lcd_mipi_dsi.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "protocol_examples_common.h"
 #include "hotreload.h"
+#include "bsp/esp-bsp.h"
 #include "bsp/display.h"
 
 #include "imgui.h"
@@ -25,6 +27,13 @@
 #include "app_ui.h"
 
 static const char *TAG = "imgui_reload";
+
+static IRAM_ATTR bool on_color_trans_done(esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, void *ctx)
+{
+    BaseType_t need_yield = pdFALSE;
+    xSemaphoreGiveFromISR(static_cast<SemaphoreHandle_t>(ctx), &need_yield);
+    return need_yield == pdTRUE;
+}
 
 extern "C" void app_main(void)
 {
@@ -41,24 +50,29 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     /* ---- BSP display ---- */
-    esp_lcd_panel_handle_t panel = nullptr;
-    esp_lcd_panel_io_handle_t io = nullptr;
-    bsp_display_config_t disp_cfg = {};
-    ESP_ERROR_CHECK(bsp_display_new(&disp_cfg, &panel, &io));
-    bsp_display_backlight_on();
+    bsp_lcd_handles_t lcd_handles;
+    ESP_ERROR_CHECK(bsp_display_new(&lcd_handles));
+
+    /* Register DPI refresh-done callback */
+    SemaphoreHandle_t refresh_finish = xSemaphoreCreateBinary();
+    esp_lcd_dpi_panel_event_callbacks_t cbs = {};
+    cbs.on_color_trans_done = on_color_trans_done;
+    ESP_ERROR_CHECK(esp_lcd_dpi_panel_register_event_callbacks(lcd_handles.panel, &cbs, refresh_finish));
 
     /* ---- ImGui port ---- */
     imgui_port_renderer_handle_t renderer = nullptr;
     ESP_ERROR_CHECK(imgui_port_new_renderer_rgb888(&renderer));
 
     const imgui_port_cfg_t port_cfg = {
-        .panel_handle  = panel,
+        .panel_handle  = lcd_handles.panel,
         .width         = BSP_LCD_H_RES,
         .height        = BSP_LCD_V_RES,
         .render_buf    = nullptr,
         .renderer      = renderer,
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
+    imgui_port_enable_fps_counter_ui();
+    imgui_port_enable_fps_counter_console();
 
     /* ---- Hot reload ---- */
     hotreload_config_t hr_config = HOTRELOAD_CONFIG_DEFAULT();
