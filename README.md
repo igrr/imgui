@@ -19,23 +19,45 @@ dependencies:
 
 Initialize the port in your application:
 
-```c
-#include "imgui_port_esp_lcd.h"
+<!-- code_snippet_start:examples/imgui_reload/main/imgui_reload_main.cpp:r/^#include "imgui\.h"/:r/^#include "app_ui\.h"/ -->
+
+```cpp
 #include "imgui.h"
-
-imgui_port_cfg_t cfg = {
-    .panel_handle = panel,   // from esp_lcd_new_*()
-    .width  = 800,
-    .height = 480,
-};
-ESP_ERROR_CHECK(imgui_port_init(&cfg));
-
-while (true) {
-    imgui_port_new_frame();
-    ImGui::ShowDemoWindow();
-    imgui_port_render();
-}
+#include "imgui_port_esp_lcd.h"
 ```
+
+<!-- code_snippet_end -->
+
+<!-- code_snippet_start:examples/imgui_reload/main/imgui_reload_main.cpp:r/ImGui port/:r/imgui_port_init/+ -->
+
+```cpp
+    /* ---- ImGui port ---- */
+    imgui_port_renderer_handle_t renderer = nullptr;
+    ESP_ERROR_CHECK(imgui_port_new_renderer_rgb888(&renderer));
+
+    const imgui_port_cfg_t port_cfg = {
+        .panel_handle  = panel,
+        .width         = BSP_LCD_H_RES,
+        .height        = BSP_LCD_V_RES,
+        .render_buf    = nullptr,
+        .renderer      = renderer,
+    };
+    ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
+```
+
+<!-- code_snippet_end -->
+
+<!-- code_snippet_start:examples/imgui_reload/main/imgui_reload_main.cpp:r/Render loop/:r/imgui_port_render/+ -->
+
+```cpp
+    /* ---- Render loop ---- */
+    while (true) {
+        imgui_port_new_frame();
+        app_ui_draw();
+        imgui_port_render();
+```
+
+<!-- code_snippet_end -->
 
 See [`API.md`](API.md) for the full public API reference.
 
