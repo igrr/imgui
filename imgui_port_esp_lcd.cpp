@@ -314,12 +314,18 @@ extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
 
     /* ---- ImGui context ---- */
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
+    if (!ImGui::GetCurrentContext()) {
+        ImGui::CreateContext();
+        ImGui::StyleColorsDark();
+    }
 
     ImGuiIO &io = ImGui::GetIO();
     io.DisplaySize             = ImVec2((float)s_width, (float)s_height);
     io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+    /* Use Alpha8 atlas format — the software renderer only needs the alpha
+     * channel and this saves 3/4 of the atlas memory vs the RGBA32 default. */
+    io.Fonts->TexDesiredFormat = ImTextureFormat_Alpha8;
 
     /* ---- Font atlas ---- */
     unsigned char *atlas_pixels = nullptr;
