@@ -12,4 +12,3 @@ pytest --target esp32s3  pytest_imgui.py
 ```
 
 The screenshot will be captured from QEMU virtual display and stored in screenshot.png.
-

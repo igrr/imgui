@@ -11,4 +11,3 @@
 /* Disable the default Unix/Win32 shell handler which calls fork()/execvp(),
  * neither of which is available on ESP-IDF / FreeRTOS. */
 #define IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS
-

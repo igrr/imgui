@@ -114,8 +114,8 @@ static void convert_rgb565(color32_t *src, void *dst, int n)
     uint16_t *out = static_cast<uint16_t *>(dst);
     for (int i = 0; i < n; ++i) {
         out[i] = (static_cast<uint16_t>(src[i].r >> 3) << 11)
-               | (static_cast<uint16_t>(src[i].g >> 2) <<  5)
-               | (static_cast<uint16_t>(src[i].b >> 3));
+                 | (static_cast<uint16_t>(src[i].g >> 2) <<  5)
+                 | (static_cast<uint16_t>(src[i].b >> 3));
     }
 }
 
@@ -126,9 +126,13 @@ static void convert_rgb565(color32_t *src, void *dst, int n)
 static esp_err_t new_renderer(int bpp, imgui_port_convert_fn_t fn,
                               imgui_port_renderer_handle_t *out)
 {
-    if (!out) return ESP_ERR_INVALID_ARG;
+    if (!out) {
+        return ESP_ERR_INVALID_ARG;
+    }
     auto *r = new (std::nothrow) imgui_port_renderer_t;
-    if (!r) return ESP_ERR_NO_MEM;
+    if (!r) {
+        return ESP_ERR_NO_MEM;
+    }
     r->output_bpp = bpp;
     r->convert    = fn;
     *out = r;
@@ -176,7 +180,9 @@ static void sw_render(ImDrawData *draw_data, texture_t<color32_t> &screen)
     ImGuiIO &io   = ImGui::GetIO();
     int fb_width  = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
     int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
-    if (fb_width == 0 || fb_height == 0) return;
+    if (fb_width == 0 || fb_height == 0) {
+        return;
+    }
 
     for (int n = 0; n < draw_data->CmdListsCount; ++n) {
         const ImDrawList *cmd_list   = draw_data->CmdLists[n];
@@ -207,7 +213,9 @@ static void sw_render(ImDrawData *draw_data, texture_t<color32_t> &screen)
 
 extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
 {
-    if (!cfg || !cfg->renderer) return ESP_ERR_INVALID_ARG;
+    if (!cfg || !cfg->renderer) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
     ESP_LOGI(TAG, "Initialising imgui port (%dx%d, %d bpp output)",
              cfg->width, cfg->height, cfg->renderer->output_bpp);
@@ -242,7 +250,9 @@ extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
         s_lcd_buf = psram_alloc(lcd_bytes);
         if (!s_lcd_buf) {
             ESP_LOGE(TAG, "Failed to alloc LCD buffer (%zu bytes)", lcd_bytes);
-            if (!s_render_buf_ext) heap_caps_free(s_render_buf);
+            if (!s_render_buf_ext) {
+                heap_caps_free(s_render_buf);
+            }
             s_render_buf = nullptr;
             return ESP_ERR_NO_MEM;
         }
@@ -266,7 +276,9 @@ extern "C" esp_err_t imgui_port_init(const imgui_port_cfg_t *cfg)
     s_font_tex = new (std::nothrow) texture_alpha8_t();
     if (!s_font_tex) {
         ESP_LOGE(TAG, "Failed to alloc font texture wrapper");
-        if (!s_render_buf_ext) heap_caps_free(s_render_buf);
+        if (!s_render_buf_ext) {
+            heap_caps_free(s_render_buf);
+        }
         heap_caps_free(s_lcd_buf);
         s_render_buf = nullptr;
         s_lcd_buf    = nullptr;
@@ -296,7 +308,9 @@ extern "C" void imgui_port_new_frame(void)
 
     int64_t now_us = esp_timer_get_time();
     io.DeltaTime   = (float)(now_us - s_last_us) / 1e6f;
-    if (io.DeltaTime <= 0.0f) io.DeltaTime = 1.0f / 60.0f;
+    if (io.DeltaTime <= 0.0f) {
+        io.DeltaTime = 1.0f / 60.0f;
+    }
     s_last_us = now_us;
 
     ImGui::NewFrame();
@@ -306,7 +320,9 @@ extern "C" void imgui_port_render(void)
 {
     ImGui::Render();
     ImDrawData *draw_data = ImGui::GetDrawData();
-    if (!draw_data || draw_data->CmdListsCount == 0) return;
+    if (!draw_data || draw_data->CmdListsCount == 0) {
+        return;
+    }
 
     /* Clear render buffer to opaque black before each frame */
     const int n_pixels = s_width * s_height;

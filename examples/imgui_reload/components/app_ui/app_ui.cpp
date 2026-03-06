@@ -26,8 +26,9 @@ void app_ui_draw(void)
     ImGui::SliderFloat("Slider", &slider_val, 0.0f, 1.0f);
 
     static int counter = 0;
-    if (ImGui::Button("Click me"))
+    if (ImGui::Button("Click me")) {
         counter++;
+    }
     ImGui::SameLine();
     ImGui::Text("Count: %d", counter);
 
@@ -41,10 +42,10 @@ void app_ui_draw(void)
     ImGui::SameLine();
     ImGui::RadioButton("Option C", &radio, 2);
 
-    
+
     static float progress = 0.6f;
     ImGui::ProgressBar(progress, ImVec2(-1, 0), "60%");
-    
+
     ImGui::Separator();
     static char text_buf[128] = "Edit me!";
     ImGui::InputText("Text input", text_buf, sizeof(text_buf));
