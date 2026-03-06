@@ -19,6 +19,8 @@
 | ---: | :--- |
 |  void | [**imgui\_port\_deinit**](#function-imgui_port_deinit) (void) <br>_Destroy the imgui context and free internally-allocated resources._ |
 |  void | [**imgui\_port\_delete\_renderer**](#function-imgui_port_delete_renderer) (imgui\_port\_renderer\_handle\_t handle) <br>_Delete a renderer previously created by a factory function._ |
+|  void | [**imgui\_port\_enable\_fps\_counter\_console**](#function-imgui_port_enable_fps_counter_console) (void) <br>_Enable FPS logging to the console._ |
+|  void | [**imgui\_port\_enable\_fps\_counter\_ui**](#function-imgui_port_enable_fps_counter_ui) (void) <br>_Enable an on-screen FPS counter overlay._ |
 |  esp\_err\_t | [**imgui\_port\_init**](#function-imgui_port_init) (const [**imgui\_port\_cfg\_t**](#struct-imgui_port_cfg_t)\* cfg) <br>_Initialize imgui with an esp\_lcd panel backend._ |
 |  void | [**imgui\_port\_new\_frame**](#function-imgui_port_new_frame) (void) <br>_Begin a new ImGui frame._ |
 |  esp\_err\_t | [**imgui\_port\_new\_renderer\_abgr8888**](#function-imgui_port_new_renderer_abgr8888) (imgui\_port\_renderer\_handle\_t \* out\_handle) <br>_Create a renderer for ABGR8888 output (32 bpp, R at byte-0 on LE)._ |
@@ -75,6 +77,26 @@ void imgui_port_delete_renderer (
 ) 
 ```
 
+### function `imgui_port_enable_fps_counter_console`
+
+_Enable FPS logging to the console._
+```c
+void imgui_port_enable_fps_counter_console (
+    void
+) 
+```
+
+Prints the current frame rate via ESP\_LOGI once per second. Call this once after imgui\_port\_init().
+### function `imgui_port_enable_fps_counter_ui`
+
+_Enable an on-screen FPS counter overlay._
+```c
+void imgui_port_enable_fps_counter_ui (
+    void
+) 
+```
+
+Draws a small translucent window in the lower-right corner of the display showing the current frame rate. Call this once after imgui\_port\_init().
 ### function `imgui_port_init`
 
 _Initialize imgui with an esp\_lcd panel backend._

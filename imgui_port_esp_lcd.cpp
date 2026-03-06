@@ -24,6 +24,7 @@
 
 #include <cstring>
 #include <new>
+#include <set>
 
 static const char *TAG = "imgui_port";
 
@@ -162,6 +163,58 @@ extern "C" esp_err_t imgui_port_new_renderer_rgb565(imgui_port_renderer_handle_t
 extern "C" void imgui_port_delete_renderer(imgui_port_renderer_handle_t handle)
 {
     delete handle;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Pre-render hooks                                                           */
+/* -------------------------------------------------------------------------- */
+
+typedef void (*imgui_port_hook_fn_t)(void);
+
+static std::set<imgui_port_hook_fn_t> s_pre_render_hooks;
+
+/* -------------------------------------------------------------------------- */
+/*  FPS counter                                                                */
+/* -------------------------------------------------------------------------- */
+
+static void fps_draw_ui(void)
+{
+    ImGuiIO &io = ImGui::GetIO();
+    ImGui::SetNextWindowPos(
+        ImVec2(io.DisplaySize.x - 4, io.DisplaySize.y - 4),
+        ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+    ImGui::SetNextWindowBgAlpha(0.5f);
+    if (ImGui::Begin("##FPS", nullptr,
+                     ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoNav |
+                     ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoInputs |
+                     ImGuiWindowFlags_NoFocusOnAppearing)) {
+        ImGui::Text("%.0f FPS", io.Framerate);
+    }
+    ImGui::End();
+}
+
+static void fps_print_console(void)
+{
+    static int64_t s_last_print_us = 0;
+    int64_t now_us = esp_timer_get_time();
+    if (now_us - s_last_print_us >= 1000000) {
+        ImGuiIO &io = ImGui::GetIO();
+        ESP_LOGI(TAG, "FPS: %.1f", io.Framerate);
+        s_last_print_us = now_us;
+    }
+}
+
+extern "C" void imgui_port_enable_fps_counter_ui(void)
+{
+    s_pre_render_hooks.insert(fps_draw_ui);
+}
+
+extern "C" void imgui_port_enable_fps_counter_console(void)
+{
+    s_pre_render_hooks.insert(fps_print_console);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -318,6 +371,10 @@ extern "C" void imgui_port_new_frame(void)
 
 extern "C" void imgui_port_render(void)
 {
+    for (auto hook : s_pre_render_hooks) {
+        hook();
+    }
+
     ImGui::Render();
     ImDrawData *draw_data = ImGui::GetDrawData();
     if (!draw_data || draw_data->CmdListsCount == 0) {
