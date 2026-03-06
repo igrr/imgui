@@ -118,6 +118,22 @@ void imgui_port_render(void);
  */
 void imgui_port_deinit(void);
 
+/**
+ * @brief Enable an on-screen FPS counter overlay.
+ *
+ * Draws a small translucent window in the lower-right corner of the display
+ * showing the current frame rate.  Call this once after imgui_port_init().
+ */
+void imgui_port_enable_fps_counter_ui(void);
+
+/**
+ * @brief Enable FPS logging to the console.
+ *
+ * Prints the current frame rate via ESP_LOGI once per second.
+ * Call this once after imgui_port_init().
+ */
+void imgui_port_enable_fps_counter_console(void);
+
 #ifdef __cplusplus
 }
 #endif
