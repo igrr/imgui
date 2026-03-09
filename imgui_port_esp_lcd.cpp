@@ -22,11 +22,94 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 
+#include <cinttypes>
 #include <cstring>
 #include <new>
 #include <set>
 
+#include "sdkconfig.h"
+
 static const char *TAG = "imgui_port";
+
+/* -------------------------------------------------------------------------- */
+/*  Profiling infrastructure                                                   */
+/* -------------------------------------------------------------------------- */
+
+#if CONFIG_IMGUI_PROFILING
+
+/**
+ * Per-frame timing breakdown (microseconds).
+ *
+ * Stages measured via port-layer macros:
+ *   clear, rasterize, convert, flush
+ *
+ * Stages measured via linker wrapping of upstream ImGui code:
+ *   new_frame  (ImGui::NewFrame)
+ *   render     (ImGui::Render)
+ */
+static struct {
+    int64_t new_frame;
+    int64_t render;
+    int64_t clear;
+    int64_t rasterize;
+    int64_t convert;
+    int64_t flush;
+    int64_t total;
+} s_prof_cur, s_prof_acc;
+
+static int s_prof_frames = 0;
+
+/* Scratch variable for timing a section */
+static int64_t s_prof_ts;
+
+#define PROF_BEGIN()        do { s_prof_ts = esp_timer_get_time(); } while (0)
+#define PROF_END(field)     do { s_prof_cur.field += esp_timer_get_time() - s_prof_ts; } while (0)
+
+#else /* !CONFIG_IMGUI_PROFILING */
+
+#define PROF_BEGIN()        (void)0
+#define PROF_END(field)     (void)0
+
+#endif /* CONFIG_IMGUI_PROFILING */
+
+/* -------------------------------------------------------------------------- */
+/*  Linker-based wrapping of upstream ImGui functions                          */
+/*                                                                             */
+/*  The --wrap linker flag redirects calls to a symbol S so that:              */
+/*    __wrap_S   is called instead of S                                        */
+/*    __real_S   calls the original S                                          */
+/*                                                                             */
+/*  We use this for ImGui::NewFrame() and ImGui::Render() so that we can       */
+/*  instrument upstream code without modifying the imgui submodule.            */
+/*  The mangled names (Itanium C++ ABI / GCC) are:                            */
+/*    ImGui::NewFrame  →  _ZN5ImGui8NewFrameEv                                */
+/*    ImGui::Render    →  _ZN5ImGui6RenderEv                                  */
+/* -------------------------------------------------------------------------- */
+
+#if CONFIG_IMGUI_PROFILING
+
+extern "C" {
+
+    extern void __real__ZN5ImGui8NewFrameEv(void);
+    extern void __real__ZN5ImGui6RenderEv(void);
+
+    void __wrap__ZN5ImGui8NewFrameEv(void)
+    {
+        PROF_BEGIN();
+        __real__ZN5ImGui8NewFrameEv();
+        PROF_END(new_frame);
+    }
+
+    void __wrap__ZN5ImGui6RenderEv(void)
+    {
+        PROF_BEGIN();
+        __real__ZN5ImGui6RenderEv();
+        PROF_END(render);
+    }
+
+} /* extern "C" */
+
+#endif /* CONFIG_IMGUI_PROFILING */
 
 /* -------------------------------------------------------------------------- */
 /*  Renderer (private definition)                                              */
@@ -218,6 +301,48 @@ extern "C" void imgui_port_enable_fps_counter_console(void)
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Profiling console output                                                   */
+/* -------------------------------------------------------------------------- */
+
+#if CONFIG_IMGUI_PROFILING
+
+static void profiling_print_console(void)
+{
+    static int64_t s_last_print_us = 0;
+    int64_t now_us = esp_timer_get_time();
+    if (now_us - s_last_print_us < 1000000 || s_prof_frames == 0) {
+        return;
+    }
+    s_last_print_us = now_us;
+
+    /* Compute averages over the accumulated frames */
+    int n = s_prof_frames;
+    ESP_LOGI(TAG, "IMGUI_PROF: new_frame=%" PRId64 " render=%" PRId64
+             " clear=%" PRId64 " rasterize=%" PRId64
+             " convert=%" PRId64 " flush=%" PRId64
+             " total=%" PRId64 " frames=%d",
+             s_prof_acc.new_frame / n, s_prof_acc.render / n,
+             s_prof_acc.clear / n, s_prof_acc.rasterize / n,
+             s_prof_acc.convert / n, s_prof_acc.flush / n,
+             s_prof_acc.total / n, n);
+
+    /* Reset accumulators */
+    memset(&s_prof_acc, 0, sizeof(s_prof_acc));
+    s_prof_frames = 0;
+}
+
+#endif /* CONFIG_IMGUI_PROFILING */
+
+extern "C" void imgui_port_enable_profiling_console(void)
+{
+#if CONFIG_IMGUI_PROFILING
+    s_pre_render_hooks.insert(profiling_print_console);
+#else
+    ESP_LOGW(TAG, "Profiling not enabled — set CONFIG_IMGUI_PROFILING=y");
+#endif
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Software renderer                                                          */
 /* -------------------------------------------------------------------------- */
 
@@ -377,11 +502,16 @@ extern "C" void imgui_port_new_frame(void)
 
 extern "C" void imgui_port_render(void)
 {
+#if CONFIG_IMGUI_PROFILING
+    int64_t frame_start = esp_timer_get_time();
+#endif
+
     for (auto hook : s_pre_render_hooks) {
         hook();
     }
 
     ImGui::Render();
+
     ImDrawData *draw_data = ImGui::GetDrawData();
     if (!draw_data || draw_data->CmdListsCount == 0) {
         return;
@@ -389,9 +519,12 @@ extern "C" void imgui_port_render(void)
 
     /* Clear render buffer to opaque black before each frame */
     const int n_pixels = s_width * s_height;
+
+    PROF_BEGIN();
     for (int i = 0; i < n_pixels; ++i) {
         s_render_buf[i] = color32_t(0, 0, 0, 255);
     }
+    PROF_END(clear);
 
     /* Build a softraster texture_t view over the render buffer */
     texture_t<color32_t> screen;
@@ -403,23 +536,55 @@ extern "C" void imgui_port_render(void)
     screen.needFree = false;
 
     /* Rasterise all draw lists */
+    PROF_BEGIN();
     sw_render(draw_data, screen);
+    PROF_END(rasterize);
 
     /* Convert and flush to panel */
     if (s_renderer->convert) {
         if (s_renderer->output_bpp == 32) {
             /* In-place conversion (e.g. R↔B swap for ARGB8888) */
+            PROF_BEGIN();
             s_renderer->convert(s_render_buf, s_render_buf, n_pixels);
+            PROF_END(convert);
+
+            PROF_BEGIN();
             esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_render_buf);
+            PROF_END(flush);
         } else {
             /* Convert to separate output buffer (RGB888, RGB565, …) */
+            PROF_BEGIN();
             s_renderer->convert(s_render_buf, s_lcd_buf, n_pixels);
+            PROF_END(convert);
+
+            PROF_BEGIN();
             esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_lcd_buf);
+            PROF_END(flush);
         }
     } else {
         /* No conversion – render buffer is already in the target format */
+        PROF_BEGIN();
         esp_lcd_panel_draw_bitmap(s_panel, 0, 0, s_width, s_height, s_render_buf);
+        PROF_END(flush);
     }
+
+#if CONFIG_IMGUI_PROFILING
+    s_prof_cur.total = esp_timer_get_time() - frame_start;
+
+    /* Accumulate into per-second averages */
+    s_prof_acc.new_frame  += s_prof_cur.new_frame;
+    s_prof_acc.render     += s_prof_cur.render;
+    s_prof_acc.clear      += s_prof_cur.clear;
+    s_prof_acc.rasterize  += s_prof_cur.rasterize;
+    s_prof_acc.convert    += s_prof_cur.convert;
+    s_prof_acc.flush      += s_prof_cur.flush;
+    s_prof_acc.total      += s_prof_cur.total;
+    s_prof_frames++;
+
+    /* Clear for next frame (after accumulation, so new_frame timing from
+     * the linker wrapper during imgui_port_new_frame() is preserved). */
+    memset(&s_prof_cur, 0, sizeof(s_prof_cur));
+#endif
 }
 
 extern "C" void imgui_port_deinit(void)

@@ -1,0 +1,18 @@
+menu "ImGui"
+
+    config IMGUI_PROFILING
+        bool "Enable rendering profiling"
+        default n
+        help
+            Instrument the ImGui rendering pipeline to collect per-stage
+            timing breakdowns. When enabled, each frame records the time
+            spent in ImGui::NewFrame(), ImGui::Render(), buffer clear,
+            software rasterization, pixel format conversion, and LCD flush.
+
+            The profiling data is logged to the console once per second
+            via imgui_port_enable_profiling_console().
+
+            This adds a small overhead per frame and should only be
+            enabled for performance analysis builds.
+
+endmenu

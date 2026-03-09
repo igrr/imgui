@@ -134,6 +134,25 @@ void imgui_port_enable_fps_counter_ui(void);
  */
 void imgui_port_enable_fps_counter_console(void);
 
+/**
+ * @brief Enable rendering profiling output to the console.
+ *
+ * Prints a per-stage timing breakdown once per second, showing the average
+ * time (in microseconds) spent in each rendering stage:
+ *
+ *   - new_frame:  ImGui::NewFrame()  (via linker wrapping)
+ *   - render:     ImGui::Render()    (via linker wrapping)
+ *   - clear:      framebuffer clear
+ *   - rasterize:  software rasterization (sw_render)
+ *   - convert:    pixel format conversion
+ *   - flush:      esp_lcd_panel_draw_bitmap()
+ *   - total:      full frame time
+ *
+ * Requires CONFIG_IMGUI_PROFILING=y.  If profiling is not enabled, logs a
+ * warning and does nothing.
+ */
+void imgui_port_enable_profiling_console(void);
+
 #ifdef __cplusplus
 }
 #endif

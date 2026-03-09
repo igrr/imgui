@@ -98,6 +98,7 @@ extern "C" void app_main(void)
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
     imgui_port_enable_fps_counter_console();
+    imgui_port_enable_profiling_console();
 
     ESP_LOGI(TAG, "ImGui Perf Test Ready");
 
