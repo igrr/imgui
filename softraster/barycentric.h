@@ -81,4 +81,48 @@ inline void barycentricUVCol(pixel_t<POS, COL> &p,
   p.c     = (bary.a.c * u) + (bary.b.c * v) + (bary.c.c * w);
 }
 
+// Precomputed increments for scanline-based triangle rasterization.
+// All three orient values and barycentric weights (v, w) are linear in
+// screen x/y, so they can be stepped with additions instead of
+// recomputing from scratch each pixel.
+template<typename POS>
+struct tri_increments_t
+{
+  // orient() increments per x-step and y-step for three edges
+  POS orient_dx[3];
+  POS orient_dy[3];
+  // barycentric weight increments
+  float v_dx, v_dy;
+  float w_dx, w_dy;
+};
+
+template<typename POS, typename COL>
+inline tri_increments_t<POS> triIncrementsPre(const bary_t<POS, COL> &bary)
+{
+  tri_increments_t<POS> inc;
+
+  // Edge 0: {b, c} with other = a  — orient = -halfspace({b,c}, point) + bias
+  // halfspace_dx = -(c.y - b.y),  orient_dx = (c.y - b.y)
+  inc.orient_dx[0] = bary.c.y - bary.b.y;
+  inc.orient_dy[0] = -(bary.c.x - bary.b.x);
+
+  // Edge 1: {c, a} with other = b
+  inc.orient_dx[1] = bary.a.y - bary.c.y;
+  inc.orient_dy[1] = -(bary.a.x - bary.c.x);
+
+  // Edge 2: {a, b} with other = c
+  inc.orient_dx[2] = bary.b.y - bary.a.y;
+  inc.orient_dy[2] = -(bary.b.x - bary.a.x);
+
+  // Barycentric weight increments:
+  // d20 += bary.p0.x per x-step, d21 += bary.p1.x per x-step
+  // v = (d11*d20 - d01*d21) * denom  =>  v_dx = (d11*p0.x - d01*p1.x) * denom
+  inc.v_dx = (bary.d11 * bary.p0.x - bary.d01 * bary.p1.x) * bary.denom;
+  inc.v_dy = (bary.d11 * bary.p0.y - bary.d01 * bary.p1.y) * bary.denom;
+  inc.w_dx = (bary.d00 * bary.p1.x - bary.d01 * bary.p0.x) * bary.denom;
+  inc.w_dy = (bary.d00 * bary.p1.y - bary.d01 * bary.p0.y) * bary.denom;
+
+  return inc;
+}
+
 #endif

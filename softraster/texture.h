@@ -142,7 +142,7 @@ struct texture_t : public texture_base_t
 
   FORCE_INLINE COLOR &at(size_t x, size_t y)
   {
-    if (x > w || y > h)
+    if (x >= w || y >= h)
     {
       printf("%zu, %zu\n", x, y);
       abort();
@@ -152,12 +152,24 @@ struct texture_t : public texture_base_t
 
   FORCE_INLINE const COLOR &at(size_t x, size_t y) const
   {
-    if (x > w || y > h)
+    if (x >= w || y >= h)
     {
       printf("%zu, %zu\n", x, y);
       abort();
     }
     return reinterpret_cast<COLOR *>(pixels)[x + (w * y)];
+  }
+
+  // Unchecked access for validated inner loops where coordinates are
+  // guaranteed in-bounds by prior clipping.
+  FORCE_INLINE COLOR &at_unchecked(size_t x, size_t y)
+  {
+    return reinterpret_cast<COLOR *>(pixels)[x + (w * y)];
+  }
+
+  FORCE_INLINE const COLOR &at_unchecked(size_t x, size_t y) const
+  {
+    return reinterpret_cast<const COLOR *>(pixels)[x + (w * y)];
   }
 };
 

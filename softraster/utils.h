@@ -68,7 +68,7 @@ inline void swap(T *tri1, T *tri2)
 template<typename T>
 FORCE_INLINE T lerp(T a, T b, uint8_t f)
 {
-  return a + ((f * (b - a)) / 0xFF);
+  return a + ((f * (b - a)) >> 8);
 }
 
 template<typename T>
