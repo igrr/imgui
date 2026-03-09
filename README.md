@@ -36,7 +36,7 @@ Initialize the port in your application:
     ESP_ERROR_CHECK(imgui_port_new_renderer_rgb888(&renderer));
 
     const imgui_port_cfg_t port_cfg = {
-        .panel_handle  = panel,
+        .panel_handle  = lcd_handles.panel,
         .width         = BSP_LCD_H_RES,
         .height        = BSP_LCD_V_RES,
         .render_buf    = nullptr,

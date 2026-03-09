@@ -2,5 +2,3 @@ dependencies:
   igrr/imgui:
     version: "*"
     override_path: "../../.."
-  bsp_waveshare_esp32p4_module_dev_kit:
-    path: "../../../bsp/bsp_waveshare_esp32p4_module_dev_kit"
