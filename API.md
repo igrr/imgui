@@ -107,16 +107,7 @@ void imgui_port_enable_profiling_console (
 ) 
 ```
 
-Prints a per-stage timing breakdown once per second, showing the average time (in microseconds) spent in each rendering stage:
-
-
-* new\_frame: ImGui::NewFrame() (via linker wrapping)
-* render: ImGui::Render() (via linker wrapping)
-* clear: framebuffer clear
-* rasterize: software rasterization (sw\_render)
-* convert: pixel format conversion
-* flush: esp\_lcd\_panel\_draw\_bitmap()
-* total: full frame time
+Prints a per-stage timing breakdown of the rendering pipeline once per second, showing the average time (in microseconds) spent in each stage.
 
 Requires CONFIG\_IMGUI\_PROFILING=y. If profiling is not enabled, logs a warning and does nothing.
 ### function `imgui_port_init`
