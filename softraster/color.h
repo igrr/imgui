@@ -457,7 +457,7 @@ struct color24_t
   }
   inline bool operator!=(const color24_t &rhs) const
   {
-    return r != rhs.r && g != rhs.g && b != rhs.b;
+    return r != rhs.r || g != rhs.g || b != rhs.b;
   }
 
   inline uint8_t R() const { return r; }
@@ -528,7 +528,7 @@ struct color32_t
   }
   inline bool operator!=(const color32_t &rhs) const
   {
-    return r != rhs.r && g != rhs.g && b != rhs.b && a != rhs.a;
+    return r != rhs.r || g != rhs.g || b != rhs.b || a != rhs.a;
   }
 
   inline uint8_t R() const { return r; }
@@ -696,7 +696,7 @@ inline color32_t operator*(const float lhs, color32_t rhs)
 
 inline alpha8_t operator*(alpha8_t lhs, const alpha8_t &rhs)
 {
-  lhs.a = (lhs.a * rhs.a) / 0xFFU;
+  lhs.a = (lhs.a * rhs.a) >> 8;
   return lhs;
 }
 
@@ -717,7 +717,7 @@ inline color32_t operator*(const alpha8_t &lhs, const color24_t &rhs)
 
 inline color32_t operator*(const alpha8_t &lhs, color32_t rhs)
 {
-  rhs.a = (rhs.a * lhs.a) / 0xFFU;
+  rhs.a = (rhs.a * lhs.a) >> 8;
   return rhs;
 }
 
@@ -730,7 +730,7 @@ inline color32_t operator*(const value8_t &lhs, const alpha8_t &rhs)
 
 inline value8_t operator*(value8_t lhs, const value8_t &rhs)
 {
-  lhs.v = (lhs.v * rhs.v) / 0xFFU;
+  lhs.v = (lhs.v * rhs.v) >> 8;
   return lhs;
 }
 
@@ -745,17 +745,17 @@ inline color16_t operator*(const value8_t &lhs, color16_t rhs)
 
 inline color24_t operator*(const value8_t &lhs, color24_t rhs)
 {
-  rhs.r = (rhs.r * lhs.v) / 0xFFU;
-  rhs.g = (rhs.g * lhs.v) / 0xFFU;
-  rhs.b = (rhs.b * lhs.v) / 0xFFU;
+  rhs.r = (rhs.r * lhs.v) >> 8;
+  rhs.g = (rhs.g * lhs.v) >> 8;
+  rhs.b = (rhs.b * lhs.v) >> 8;
   return rhs;
 }
 
 inline color32_t operator*(const value8_t &lhs, color32_t rhs)
 {
-  rhs.r = (rhs.r * lhs.v) / 0xFFU;
-  rhs.g = (rhs.g * lhs.v) / 0xFFU;
-  rhs.b = (rhs.b * lhs.v) / 0xFFU;
+  rhs.r = (rhs.r * lhs.v) >> 8;
+  rhs.g = (rhs.g * lhs.v) >> 8;
+  rhs.b = (rhs.b * lhs.v) >> 8;
   return rhs;
 }
 
@@ -785,17 +785,17 @@ inline color16_t operator*(color16_t lhs, const color16_t &rhs)
 
 inline color24_t operator*(const color16_t &lhs, color24_t rhs)
 {
-  rhs.r = (rhs.r * lhs.R()) / 0xFFU;
-  rhs.g = (rhs.g * lhs.G()) / 0xFFU;
-  rhs.b = (rhs.b * lhs.B()) / 0xFFU;
+  rhs.r = (rhs.r * lhs.R()) >> 8;
+  rhs.g = (rhs.g * lhs.G()) >> 8;
+  rhs.b = (rhs.b * lhs.B()) >> 8;
   return rhs;
 }
 
 inline color32_t operator*(const color16_t &lhs, color32_t rhs)
 {
-  rhs.r = (rhs.r * lhs.R()) / 0xFFU;
-  rhs.g = (rhs.g * lhs.G()) / 0xFFU;
-  rhs.b = (rhs.b * lhs.B()) / 0xFFU;
+  rhs.r = (rhs.r * lhs.R()) >> 8;
+  rhs.g = (rhs.g * lhs.G()) >> 8;
+  rhs.b = (rhs.b * lhs.B()) >> 8;
   return rhs;
 }
 
@@ -808,33 +808,33 @@ inline color32_t operator*(const color24_t &lhs, const alpha8_t &rhs)
 
 inline color24_t operator*(color24_t lhs, const value8_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.v) / 0xFFU;
-  lhs.g = (lhs.g * rhs.v) / 0xFFU;
-  lhs.b = (lhs.b * rhs.v) / 0xFFU;
+  lhs.r = (lhs.r * rhs.v) >> 8;
+  lhs.g = (lhs.g * rhs.v) >> 8;
+  lhs.b = (lhs.b * rhs.v) >> 8;
   return lhs;
 }
 
 inline color24_t operator*(color24_t lhs, const color16_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.R()) / 0xFFU;
-  lhs.g = (lhs.g * rhs.G()) / 0xFFU;
-  lhs.b = (lhs.b * rhs.B()) / 0xFFU;
+  lhs.r = (lhs.r * rhs.R()) >> 8;
+  lhs.g = (lhs.g * rhs.G()) >> 8;
+  lhs.b = (lhs.b * rhs.B()) >> 8;
   return lhs;
 }
 
 inline color24_t operator*(color24_t lhs, const color24_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.r) / 0xFFU;
-  lhs.g = (lhs.g * rhs.g) / 0xFFU;
-  lhs.b = (lhs.b * rhs.b) / 0xFFU;
+  lhs.r = (lhs.r * rhs.r) >> 8;
+  lhs.g = (lhs.g * rhs.g) >> 8;
+  lhs.b = (lhs.b * rhs.b) >> 8;
   return lhs;
 }
 
 inline color32_t operator*(const color24_t &lhs, color32_t rhs)
 {
-  rhs.r = (rhs.r * lhs.r) / 0xFFU;
-  rhs.g = (rhs.g * lhs.g) / 0xFFU;
-  rhs.b = (rhs.b * lhs.b) / 0xFFU;
+  rhs.r = (rhs.r * lhs.r) >> 8;
+  rhs.g = (rhs.g * lhs.g) >> 8;
+  rhs.b = (rhs.b * lhs.b) >> 8;
   return rhs;
 }
 
@@ -842,40 +842,40 @@ inline color32_t operator*(const color24_t &lhs, color32_t rhs)
 
 inline color32_t operator*(color32_t lhs, const alpha8_t &rhs)
 {
-  lhs.a = (lhs.a * rhs.a) / 0xFFU;
+  lhs.a = (lhs.a * rhs.a) >> 8;
   return lhs;
 }
 
 inline color32_t operator*(color32_t lhs, const value8_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.v) / 0xFFU;
-  lhs.g = (lhs.g * rhs.v) / 0xFFU;
-  lhs.b = (lhs.b * rhs.v) / 0xFFU;
+  lhs.r = (lhs.r * rhs.v) >> 8;
+  lhs.g = (lhs.g * rhs.v) >> 8;
+  lhs.b = (lhs.b * rhs.v) >> 8;
   return lhs;
 }
 
 inline color32_t operator*(color32_t lhs, const color16_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.R()) / 0xFFU;
-  lhs.g = (lhs.g * rhs.G()) / 0xFFU;
-  lhs.b = (lhs.b * rhs.B()) / 0xFFU;
+  lhs.r = (lhs.r * rhs.R()) >> 8;
+  lhs.g = (lhs.g * rhs.G()) >> 8;
+  lhs.b = (lhs.b * rhs.B()) >> 8;
   return lhs;
 }
 
 inline color32_t operator*(color32_t lhs, const color24_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.r) / 0xFFU;
-  lhs.g = (lhs.g * rhs.g) / 0xFFU;
-  lhs.b = (lhs.b * rhs.b) / 0xFFU;
+  lhs.r = (lhs.r * rhs.r) >> 8;
+  lhs.g = (lhs.g * rhs.g) >> 8;
+  lhs.b = (lhs.b * rhs.b) >> 8;
   return lhs;
 }
 
 inline color32_t operator*(color32_t lhs, const color32_t &rhs)
 {
-  lhs.r = (lhs.r * rhs.r) / 0xFFU;
-  lhs.g = (lhs.g * rhs.g) / 0xFFU;
-  lhs.b = (lhs.b * rhs.b) / 0xFFU;
-  lhs.a = (lhs.a * rhs.a) / 0xFFU;
+  lhs.r = (lhs.r * rhs.r) >> 8;
+  lhs.g = (lhs.g * rhs.g) >> 8;
+  lhs.b = (lhs.b * rhs.b) >> 8;
+  lhs.a = (lhs.a * rhs.a) >> 8;
   return lhs;
 }
 
@@ -979,7 +979,7 @@ inline alpha8_t operator%(const alpha8_t &lhs, alpha8_t rhs)
   }
   else
   {
-    rhs.a += (lhs.a * (0xFFU - rhs.a)) / 0xFFU;
+    rhs.a += (lhs.a * (0xFFU - rhs.a)) >> 8;
   }
   return lhs;
 }
@@ -1007,9 +1007,9 @@ inline color32_t operator%(const alpha8_t &lhs, color32_t rhs)
   }
   else if (lhs.a == 0xFFU)
   {
-    rhs.r = (0xFFU - rhs.a) + ((rhs.r * rhs.a) / 0xFFU);
-    rhs.g = (0xFFU - rhs.a) + ((rhs.g * rhs.a) / 0xFFU);
-    rhs.b = (0xFFU - rhs.a) + ((rhs.b * rhs.a) / 0xFFU);
+    rhs.r = (0xFFU - rhs.a) + ((rhs.r * rhs.a) >> 8);
+    rhs.g = (0xFFU - rhs.a) + ((rhs.g * rhs.a) >> 8);
+    rhs.b = (0xFFU - rhs.a) + ((rhs.b * rhs.a) >> 8);
   }
   else if (rhs.a == 0x00U)
   {
@@ -1017,7 +1017,7 @@ inline color32_t operator%(const alpha8_t &lhs, color32_t rhs)
   }
   else
   {
-    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) / 0xFFU) + rhs.a;
+    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) >> 8) + rhs.a;
     if (outA)
     {
       const uint8_t srcRGB = lhs.a;
@@ -1034,7 +1034,7 @@ inline color32_t operator%(const alpha8_t &lhs, color32_t rhs)
 
 inline value8_t operator%(value8_t lhs, const alpha8_t &rhs)
 {
-  lhs.v += rhs.a - ((lhs.v * rhs.a) / 0xFFU);
+  lhs.v += rhs.a - ((lhs.v * rhs.a) >> 8);
   return lhs;
 }
 
@@ -1065,10 +1065,10 @@ inline color32_t operator%(const value8_t &lhs, color32_t rhs)
   }
   else
   {
-    const uint8_t v = ((0xFFU - rhs.a) * lhs.v) / 0xFFU;
-    rhs.r           = v + ((rhs.r * rhs.a) / 0xFFU);
-    rhs.g           = v + ((rhs.g * rhs.a) / 0xFFU);
-    rhs.b           = v + ((rhs.b * rhs.a) / 0xFFU);
+    const uint8_t v = ((0xFFU - rhs.a) * lhs.v) >> 8;
+    rhs.r           = v + ((rhs.r * rhs.a) >> 8);
+    rhs.g           = v + ((rhs.g * rhs.a) >> 8);
+    rhs.b           = v + ((rhs.b * rhs.a) >> 8);
   }
   return rhs;
 }
@@ -1078,9 +1078,9 @@ inline color32_t operator%(const value8_t &lhs, color32_t rhs)
 inline color16_t operator%(color16_t lhs, const alpha8_t &rhs)
 {
   lhs.rgb =
-    C16R(C16R(lhs.rgb) + ((rhs.a * (C16RMASK - C16R(lhs.rgb))) / 0xFFU)) |
-    C16G(C16G(lhs.rgb) + ((rhs.a * (C16GMASK - C16G(lhs.rgb))) / 0xFFU)) |
-    C16B(C16B(lhs.rgb) + ((rhs.a * (C16BMASK - C16B(lhs.rgb))) / 0xFFU));
+    C16R(C16R(lhs.rgb) + ((rhs.a * (C16RMASK - C16R(lhs.rgb))) >> 8)) |
+    C16G(C16G(lhs.rgb) + ((rhs.a * (C16GMASK - C16G(lhs.rgb))) >> 8)) |
+    C16B(C16B(lhs.rgb) + ((rhs.a * (C16BMASK - C16B(lhs.rgb))) >> 8));
   return lhs;
 }
 
@@ -1111,9 +1111,9 @@ inline color32_t operator%(const color16_t &lhs, color32_t rhs)
   }
   else
   {
-    rhs.r = (((0xFFU - rhs.a) * lhs.R()) / 0xFFU) + ((rhs.r * rhs.a) / 0xFFU);
-    rhs.g = (((0xFFU - rhs.a) * lhs.G()) / 0xFFU) + ((rhs.g * rhs.a) / 0xFFU);
-    rhs.b = (((0xFFU - rhs.a) * lhs.B()) / 0xFFU) + ((rhs.b * rhs.a) / 0xFFU);
+    rhs.r = (((0xFFU - rhs.a) * lhs.R()) >> 8) + ((rhs.r * rhs.a) >> 8);
+    rhs.g = (((0xFFU - rhs.a) * lhs.G()) >> 8) + ((rhs.g * rhs.a) >> 8);
+    rhs.b = (((0xFFU - rhs.a) * lhs.B()) >> 8) + ((rhs.b * rhs.a) >> 8);
   }
   return rhs;
 }
@@ -1122,9 +1122,9 @@ inline color32_t operator%(const color16_t &lhs, color32_t rhs)
 
 inline color24_t operator%(color24_t lhs, const alpha8_t &rhs)
 {
-  lhs.r += (rhs.a * (0xFFU - lhs.r)) / 0xFFU;
-  lhs.g += (rhs.a * (0xFFU - lhs.g)) / 0xFFU;
-  lhs.b += (rhs.a * (0xFFU - lhs.b)) / 0xFFU;
+  lhs.r += (rhs.a * (0xFFU - lhs.r)) >> 8;
+  lhs.g += (rhs.a * (0xFFU - lhs.g)) >> 8;
+  lhs.b += (rhs.a * (0xFFU - lhs.b)) >> 8;
   return lhs;
 }
 
@@ -1155,15 +1155,19 @@ inline color32_t operator%(const color24_t &lhs, color32_t rhs)
   }
   else
   {
-    rhs.r = (((0xFFU - rhs.a) * lhs.r) / 0xFFU) + ((rhs.r * rhs.a) / 0xFFU);
-    rhs.g = (((0xFFU - rhs.a) * lhs.g) / 0xFFU) + ((rhs.g * rhs.a) / 0xFFU);
-    rhs.b = (((0xFFU - rhs.a) * lhs.b) / 0xFFU) + ((rhs.b * rhs.a) / 0xFFU);
+    rhs.r = (((0xFFU - rhs.a) * lhs.r) >> 8) + ((rhs.r * rhs.a) >> 8);
+    rhs.g = (((0xFFU - rhs.a) * lhs.g) >> 8) + ((rhs.g * rhs.a) >> 8);
+    rhs.b = (((0xFFU - rhs.a) * lhs.b) >> 8) + ((rhs.b * rhs.a) >> 8);
   }
   return rhs;
 }
 
 // color32_t
 
+// Blending alpha8_t over color32_t treats alpha8 as "white with variable alpha".
+// When rhs.a == 0xFF, this returns pure white — this is intentional because
+// alpha8 carries no color information.  In normal ImGui rendering this path
+// is not hit because vertex color × texture always produces a color32_t first.
 inline color32_t operator%(color32_t lhs, const alpha8_t &rhs)
 {
   if (rhs.a == 0xFFU)
@@ -1176,23 +1180,23 @@ inline color32_t operator%(color32_t lhs, const alpha8_t &rhs)
   }
   else if (lhs.a == 0xFFU)
   {
-    lhs.r += rhs.a - ((lhs.r * rhs.a) / 0xFFU);
-    lhs.g += rhs.a - ((lhs.g * rhs.a) / 0xFFU);
-    lhs.b += rhs.a - ((lhs.b * rhs.a) / 0xFFU);
+    lhs.r += rhs.a - ((lhs.r * rhs.a) >> 8);
+    lhs.g += rhs.a - ((lhs.g * rhs.a) >> 8);
+    lhs.b += rhs.a - ((lhs.b * rhs.a) >> 8);
   }
   else
   {
-    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) / 0xFFU) + rhs.a;
+    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) >> 8) + rhs.a;
     if (outA)
     {
       lhs.r =
-        (((((lhs.r * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
+        (((((lhs.r * lhs.a) >> 8) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
         outA;
       lhs.g =
-        (((((lhs.g * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
+        (((((lhs.g * lhs.a) >> 8) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
         outA;
       lhs.b =
-        (((((lhs.b * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
+        (((((lhs.b * lhs.a) >> 8) * (0xFFU - rhs.a))) + (0xFFU * rhs.a)) /
         outA;
     }
     lhs.a = outA;
@@ -1215,6 +1219,10 @@ inline color24_t operator%(const color32_t &, color24_t rhs)
   return rhs;
 }
 
+// Alpha blend (source-over compositing).
+// In the ImGui renderer the framebuffer is cleared to opaque black each frame,
+// so lhs.a is always 0xFF and only the fast-path (lerp) is taken.  The general
+// path below is kept for correctness but is never reached in normal rendering.
 inline color32_t operator%(color32_t lhs, const color32_t &rhs)
 {
   if (rhs.a == 0xFFU)
@@ -1227,23 +1235,23 @@ inline color32_t operator%(color32_t lhs, const color32_t &rhs)
   }
   else if (lhs.a == 0xFFU)
   {
-    lhs.r += ((rhs.a * (rhs.r - lhs.r)) / 0xFFU);
-    lhs.g += ((rhs.a * (rhs.g - lhs.g)) / 0xFFU);
-    lhs.b += ((rhs.a * (rhs.b - lhs.b)) / 0xFFU);
+    lhs.r += ((rhs.a * (rhs.r - lhs.r)) >> 8);
+    lhs.g += ((rhs.a * (rhs.g - lhs.g)) >> 8);
+    lhs.b += ((rhs.a * (rhs.b - lhs.b)) >> 8);
   }
   else
   {
-    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) / 0xFFU) + rhs.a;
+    const uint8_t outA = ((lhs.a * (0xFFU - rhs.a)) >> 8) + rhs.a;
     if (outA)
     {
       lhs.r =
-        (((((lhs.r * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (rhs.r * rhs.a)) /
+        (((((lhs.r * lhs.a) >> 8) * (0xFFU - rhs.a))) + (rhs.r * rhs.a)) /
         outA;
       lhs.g =
-        (((((lhs.g * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (rhs.g * rhs.a)) /
+        (((((lhs.g * lhs.a) >> 8) * (0xFFU - rhs.a))) + (rhs.g * rhs.a)) /
         outA;
       lhs.b =
-        (((((lhs.b * lhs.a) / 0xFFU) * (0xFFU - rhs.a))) + (rhs.b * rhs.a)) /
+        (((((lhs.b * lhs.a) >> 8) * (0xFFU - rhs.a))) + (rhs.b * rhs.a)) /
         outA;
     }
     lhs.a = outA;
@@ -1267,14 +1275,14 @@ inline color16_alpha8_t operator%(color16_alpha8_t lhs,
   else if (lhs.alpha.a == 0xFFU)
   {
     lhs.color.rgb = C16R(((C16R(lhs.color.rgb) * (0xFFU - rhs.alpha.a)) +
-                          (C16R(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU) |
+                          (C16R(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8) |
                     C16G(((C16G(lhs.color.rgb) * (0xFFU - rhs.alpha.a)) +
-                          (C16G(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU) |
+                          (C16G(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8) |
                     C16B(((C16B(lhs.color.rgb) * (0xFFU - rhs.alpha.a)) +
-                          (C16B(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU);
+                          (C16B(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8);
     lhs.alpha = lhs.alpha % rhs.alpha;
   }
   else
@@ -1282,15 +1290,15 @@ inline color16_alpha8_t operator%(color16_alpha8_t lhs,
     const uint8_t outA = (lhs.alpha % rhs.alpha).a;
     if (outA)
     {
-      lhs.color.rgb = C16R(((((C16R(lhs.color.rgb) * lhs.alpha.a) / 0xFFU) *
+      lhs.color.rgb = C16R(((((C16R(lhs.color.rgb) * lhs.alpha.a) >> 8) *
                              (0xFFU - rhs.alpha.a)) +
                             (C16R(rhs.color.rgb) * rhs.alpha.a)) /
                            outA) |
-                      C16G(((((C16G(lhs.color.rgb) * lhs.alpha.a) / 0xFFU) *
+                      C16G(((((C16G(lhs.color.rgb) * lhs.alpha.a) >> 8) *
                              (0xFFU - rhs.alpha.a)) +
                             (C16G(rhs.color.rgb) * rhs.alpha.a)) /
                            outA) |
-                      C16B(((((C16B(lhs.color.rgb) * lhs.alpha.a) / 0xFFU) *
+                      C16B(((((C16B(lhs.color.rgb) * lhs.alpha.a) >> 8) *
                              (0xFFU - rhs.alpha.a)) +
                             (C16B(rhs.color.rgb) * rhs.alpha.a)) /
                            outA);
@@ -1335,24 +1343,24 @@ inline color32_t operator%(const color16_alpha8_t &lhs, color32_t rhs)
   else if (lhs.alpha.a == 0xFFU)
   {
     rhs.r =
-      ((lhs.color.R() * (0xFFU - rhs.a)) / 0xFFU) + ((rhs.r * rhs.a) / 0xFFU);
+      ((lhs.color.R() * (0xFFU - rhs.a)) >> 8) + ((rhs.r * rhs.a) >> 8);
     rhs.g =
-      ((lhs.color.G() * (0xFFU - rhs.a)) / 0xFFU) + ((rhs.g * rhs.a) / 0xFFU);
+      ((lhs.color.G() * (0xFFU - rhs.a)) >> 8) + ((rhs.g * rhs.a) >> 8);
     rhs.b =
-      ((lhs.color.B() * (0xFFU - rhs.a)) / 0xFFU) + ((rhs.b * rhs.a) / 0xFFU);
+      ((lhs.color.B() * (0xFFU - rhs.a)) >> 8) + ((rhs.b * rhs.a) >> 8);
   }
   else
   {
-    const uint8_t outA = ((lhs.alpha.a * (0xFFU - rhs.a)) / 0xFFU) + rhs.a;
+    const uint8_t outA = ((lhs.alpha.a * (0xFFU - rhs.a)) >> 8) + rhs.a;
     if (outA)
     {
-      rhs.r = (((((lhs.color.R() * lhs.alpha.a) / 0xFFU) * (0xFFU - rhs.a))) +
+      rhs.r = (((((lhs.color.R() * lhs.alpha.a) >> 8) * (0xFFU - rhs.a))) +
                (rhs.r * rhs.a)) /
               outA;
-      rhs.g = (((((lhs.color.G() * lhs.alpha.a) / 0xFFU) * (0xFFU - rhs.a))) +
+      rhs.g = (((((lhs.color.G() * lhs.alpha.a) >> 8) * (0xFFU - rhs.a))) +
                (rhs.g * rhs.a)) /
               outA;
-      rhs.b = (((((lhs.color.B() * lhs.alpha.a) / 0xFFU) * (0xFFU - rhs.a))) +
+      rhs.b = (((((lhs.color.B() * lhs.alpha.a) >> 8) * (0xFFU - rhs.a))) +
                (rhs.b * rhs.a)) /
               outA;
     }
@@ -1374,14 +1382,14 @@ inline color16_alpha8_t operator%(const alpha8_t &lhs, color16_alpha8_t rhs)
   else if (lhs.a == 0xFFU)
   {
     rhs.color.rgb = C16R(((C16RMASK * (0xFFU - rhs.alpha.a)) +
-                          (C16R(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU) |
+                          (C16R(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8) |
                     C16G(((C16GMASK * (0xFFU - rhs.alpha.a)) +
-                          (C16G(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU) |
+                          (C16G(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8) |
                     C16B(((C16BMASK * (0xFFU - rhs.alpha.a)) +
-                          (C16B(rhs.color.rgb) * rhs.alpha.a)) /
-                         0xFFU);
+                          (C16B(rhs.color.rgb) * rhs.alpha.a)) >>
+                         8);
     rhs.alpha = lhs % rhs.alpha;
   }
   else
@@ -1390,13 +1398,13 @@ inline color16_alpha8_t operator%(const alpha8_t &lhs, color16_alpha8_t rhs)
     if (outA)
     {
       rhs.color.rgb =
-        C16R(((((C16RMASK * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
+        C16R(((((C16RMASK * lhs.a) >> 8) * (0xFFU - rhs.alpha.a)) +
               (C16R(rhs.color.rgb) * rhs.alpha.a)) /
              outA) |
-        C16G(((((C16GMASK * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
+        C16G(((((C16GMASK * lhs.a) >> 8) * (0xFFU - rhs.alpha.a)) +
               (C16G(rhs.color.rgb) * rhs.alpha.a)) /
              outA) |
-        C16B(((((C16BMASK * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
+        C16B(((((C16BMASK * lhs.a) >> 8) * (0xFFU - rhs.alpha.a)) +
               (C16B(rhs.color.rgb) * rhs.alpha.a)) /
              outA);
     }
@@ -1418,15 +1426,15 @@ inline color16_t operator%(const value8_t &lhs, color16_alpha8_t rhs)
   else
   {
     rhs.color.rgb =
-      C16R(((((C16RMASK * lhs.v) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
-            (C16R(rhs.color.rgb) * rhs.alpha.a)) /
-           0xFFU) |
-      C16G(((((C16GMASK * lhs.v) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
-            (C16G(rhs.color.rgb) * rhs.alpha.a)) /
-           0xFFU) |
-      C16B(((((C16BMASK * lhs.v) / 0xFFU) * (0xFFU - rhs.alpha.a)) +
-            (C16B(rhs.color.rgb) * rhs.alpha.a)) /
-           0xFFU);
+      C16R(((((C16RMASK * lhs.v) >> 8) * (0xFFU - rhs.alpha.a)) +
+            (C16R(rhs.color.rgb) * rhs.alpha.a)) >>
+           8) |
+      C16G(((((C16GMASK * lhs.v) >> 8) * (0xFFU - rhs.alpha.a)) +
+            (C16G(rhs.color.rgb) * rhs.alpha.a)) >>
+           8) |
+      C16B(((((C16BMASK * lhs.v) >> 8) * (0xFFU - rhs.alpha.a)) +
+            (C16B(rhs.color.rgb) * rhs.alpha.a)) >>
+           8);
   }
   return rhs.color;
 }
@@ -1444,14 +1452,14 @@ inline color16_t operator%(color16_t lhs, const color16_alpha8_t &rhs)
   else
   {
     lhs.rgb = C16R(((C16R(lhs.rgb) * (0xFFU - rhs.alpha.a)) +
-                    (C16R(rhs.color.rgb) * rhs.alpha.a)) /
-                   0xFFU) |
+                    (C16R(rhs.color.rgb) * rhs.alpha.a)) >>
+                   8) |
               C16G(((C16G(lhs.rgb) * (0xFFU - rhs.alpha.a)) +
-                    (C16G(rhs.color.rgb) * rhs.alpha.a)) /
-                   0xFFU) |
+                    (C16G(rhs.color.rgb) * rhs.alpha.a)) >>
+                   8) |
               C16B(((C16B(lhs.rgb) * (0xFFU - rhs.alpha.a)) +
-                    (C16B(rhs.color.rgb) * rhs.alpha.a)) /
-                   0xFFU);
+                    (C16B(rhs.color.rgb) * rhs.alpha.a)) >>
+                   8);
   }
   return lhs;
 }
@@ -1468,9 +1476,9 @@ inline color24_t operator%(color24_t lhs, const color16_alpha8_t &rhs)
   }
   else
   {
-    lhs.r += ((rhs.alpha.a * (rhs.color.R() - lhs.r)) / 0xFFU);
-    lhs.g += ((rhs.alpha.a * (rhs.color.G() - lhs.g)) / 0xFFU);
-    lhs.b += ((rhs.alpha.a * (rhs.color.B() - lhs.b)) / 0xFFU);
+    lhs.r += ((rhs.alpha.a * (rhs.color.R() - lhs.r)) >> 8);
+    lhs.g += ((rhs.alpha.a * (rhs.color.G() - lhs.g)) >> 8);
+    lhs.b += ((rhs.alpha.a * (rhs.color.B() - lhs.b)) >> 8);
   }
   return lhs;
 }
@@ -1487,23 +1495,23 @@ inline color32_t operator%(color32_t lhs, const color16_alpha8_t &rhs)
   }
   else if (lhs.a == 0xFFU)
   {
-    lhs.r += ((rhs.alpha.a * (rhs.color.R() - lhs.r)) / 0xFFU);
-    lhs.g += ((rhs.alpha.a * (rhs.color.G() - lhs.g)) / 0xFFU);
-    lhs.b += ((rhs.alpha.a * (rhs.color.B() - lhs.b)) / 0xFFU);
+    lhs.r += ((rhs.alpha.a * (rhs.color.R() - lhs.r)) >> 8);
+    lhs.g += ((rhs.alpha.a * (rhs.color.G() - lhs.g)) >> 8);
+    lhs.b += ((rhs.alpha.a * (rhs.color.B() - lhs.b)) >> 8);
   }
   else
   {
     const uint8_t outA =
-      ((lhs.a * (0xFFU - rhs.alpha.a)) / 0xFFU) + rhs.alpha.a;
+      ((lhs.a * (0xFFU - rhs.alpha.a)) >> 8) + rhs.alpha.a;
     if (outA)
     {
-      lhs.r = (((((lhs.r * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a))) +
+      lhs.r = (((((lhs.r * lhs.a) >> 8) * (0xFFU - rhs.alpha.a))) +
                (rhs.color.R() * rhs.alpha.a)) /
               outA;
-      lhs.g = (((((lhs.g * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a))) +
+      lhs.g = (((((lhs.g * lhs.a) >> 8) * (0xFFU - rhs.alpha.a))) +
                (rhs.color.G() * rhs.alpha.a)) /
               outA;
-      lhs.b = (((((lhs.b * lhs.a) / 0xFFU) * (0xFFU - rhs.alpha.a))) +
+      lhs.b = (((((lhs.b * lhs.a) >> 8) * (0xFFU - rhs.alpha.a))) +
                (rhs.color.B() * rhs.alpha.a)) /
               outA;
     }

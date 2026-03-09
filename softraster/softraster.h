@@ -44,12 +44,11 @@
 #define SOFTRASTER_QUAD_CATEGORY(is_solid, is_blit, px) /* empty */
 #endif
 
-template<typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
 void renderQuadCore(texture_t<SCREEN> &screen,
                     const texture_t<TEXTURE> &tex,
                     const clip_t<POS> &clip,
-                    const rectangle_t<POS, COLOR> &quad,
-                    const bool alphaBlend)
+                    const rectangle_t<POS, COLOR> &quad)
 {
   if ((quad.p2.x < clip.x.min) || (quad.p2.y < clip.y.min) ||
       (quad.p1.x >= clip.x.max) || (quad.p1.y >= clip.y.max))
@@ -94,9 +93,9 @@ void renderQuadCore(texture_t<SCREEN> &screen,
       {
         for (POS x = rx.min; x < rx.max; ++x)
         {
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %=
+          screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) %=
             quad.p1.c *
-            tex.at(static_cast<size_t>(x + u), static_cast<size_t>(y + v));
+            tex.at_unchecked(static_cast<size_t>(x + u), static_cast<size_t>(y + v));
         }
       }
     }
@@ -106,9 +105,9 @@ void renderQuadCore(texture_t<SCREEN> &screen,
       {
         for (POS x = rx.min; x < rx.max; ++x)
         {
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) =
+          screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) =
             quad.p1.c *
-            tex.at(static_cast<size_t>(x + u), static_cast<size_t>(y + v));
+            tex.at_unchecked(static_cast<size_t>(x + u), static_cast<size_t>(y + v));
         }
       }
     }
@@ -125,8 +124,8 @@ void renderQuadCore(texture_t<SCREEN> &screen,
         POS x   = rx.min;
         while (x < rx.max)
         {
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %=
-            quad.p1.c * tex.at(static_cast<size_t>(u), static_cast<size_t>(v));
+          screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) %=
+            quad.p1.c * tex.at_unchecked(static_cast<size_t>(u), static_cast<size_t>(v));
           ++x;
           u += duDx;
         }
@@ -144,8 +143,8 @@ void renderQuadCore(texture_t<SCREEN> &screen,
         POS x   = rx.min;
         while (x < rx.max)
         {
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) =
-            quad.p1.c * tex.at(static_cast<size_t>(u), static_cast<size_t>(v));
+          screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) =
+            quad.p1.c * tex.at_unchecked(static_cast<size_t>(u), static_cast<size_t>(v));
           ++x;
           u += duDx;
         }
@@ -156,11 +155,10 @@ void renderQuadCore(texture_t<SCREEN> &screen,
   }
 }
 
-template<typename POS, typename SCREEN, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename COLOR>
 void renderQuadCore(texture_t<SCREEN> &screen,
                     const clip_t<POS> &clip,
-                    const rectangle_t<POS, COLOR> &quad,
-                    const bool alphaBlend)
+                    const rectangle_t<POS, COLOR> &quad)
 {
   if ((quad.p2.x < clip.x.min) || (quad.p2.y < clip.y.min) ||
       (quad.p1.x >= clip.x.max) || (quad.p1.y >= clip.y.max))
@@ -181,7 +179,7 @@ void renderQuadCore(texture_t<SCREEN> &screen,
     {
       for (POS x = rx.min; x < rx.max; ++x)
       {
-        screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %= quad.p1.c;
+        screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) %= quad.p1.c;
       }
     }
   }
@@ -191,62 +189,56 @@ void renderQuadCore(texture_t<SCREEN> &screen,
     {
       for (POS x = rx.min; x < rx.max; ++x)
       {
-        screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) = quad.p1.c;
+        screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) = quad.p1.c;
       }
     }
   }
 }
 
-template<typename POS, typename SCREEN, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename COLOR>
 void renderQuad(texture_t<SCREEN> &screen,
                 const texture_base_t *tex,
                 const clip_t<POS> &clip,
-                const rectangle_t<POS, COLOR> &quad,
-                const bool alphaBlend)
+                const rectangle_t<POS, COLOR> &quad)
 {
   switch (tex == nullptr ? texture_type_t::NONE : tex->type)
   {
     case texture_type_t::ALPHA8:
-      renderQuadCore(screen,
+      renderQuadCore<alphaBlend>(screen,
                      *reinterpret_cast<const texture_alpha8_t *>(tex),
                      clip,
-                     quad,
-                     alphaBlend);
+                     quad);
       break;
 
     case texture_type_t::VALUE8:
-      renderQuadCore(screen,
+      renderQuadCore<alphaBlend>(screen,
                      *reinterpret_cast<const texture_value8_t *>(tex),
                      clip,
-                     quad,
-                     alphaBlend);
+                     quad);
       break;
 
     case texture_type_t::COLOR16:
-      renderQuadCore(screen,
+      renderQuadCore<alphaBlend>(screen,
                      *reinterpret_cast<const texture_color16_t *>(tex),
                      clip,
-                     quad,
-                     alphaBlend);
+                     quad);
       break;
 
     case texture_type_t::COLOR24:
-      renderQuadCore(screen,
+      renderQuadCore<alphaBlend>(screen,
                      *reinterpret_cast<const texture_color24_t *>(tex),
                      clip,
-                     quad,
-                     alphaBlend);
+                     quad);
       break;
 
     case texture_type_t::COLOR32:
-      renderQuadCore(screen,
+      renderQuadCore<alphaBlend>(screen,
                      *reinterpret_cast<const texture_color32_t *>(tex),
                      clip,
-                     quad,
-                     alphaBlend);
+                     quad);
       break;
 
-    default: renderQuadCore(screen, clip, quad, alphaBlend); break;
+    default: renderQuadCore<alphaBlend>(screen, clip, quad); break;
   }
 }
 
@@ -254,76 +246,100 @@ template<typename POS, typename COLOR, typename TEXTURE>
 point_t<POS> texCoord(const pixel_t<POS, COLOR> &p,
                       const texture_t<TEXTURE> &tex)
 {
-  return {mod((POS)((p.u * tex.w) + 0.5f), (POS)tex.w),
-          mod((POS)((p.v * tex.h) + 0.5f), (POS)tex.h)};
+  POS u = (POS)((p.u * tex.w) + 0.5f);
+  POS v = (POS)((p.v * tex.h) + 0.5f);
+  // Clamp to valid texture range (avoids expensive fmodf/integer divide).
+  // ImGui UVs are always in [0,1] for the font atlas, so this is a no-op
+  // in the common case; clamp handles edge rounding gracefully.
+  if (u < 0) u = 0;
+  else if (u >= (POS)tex.w) u = (POS)tex.w - 1;
+  if (v < 0) v = 0;
+  else if (v >= (POS)tex.h) v = (POS)tex.h - 1;
+  return {u, v};
 }
 
-template<typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
 void renderTriCore(texture_t<SCREEN> &screen,
                    const texture_t<TEXTURE> &tex,
                    const clip_t<POS> &clip,
                    const range_t<POS> &rY,
                    const range_t<POS> &rX,
-                   const bary_t<POS, COLOR> &bary,
-                   const bool alphaBlend)
+                   const bary_t<POS, COLOR> &bary)
 {
   const range_t<size_t> ry = {(size_t)inl_max(rY.min, clip.y.min),
                               (size_t)inl_min(rY.max, clip.y.max)};
   const range_t<size_t> rx = {(size_t)inl_max(rX.min, clip.x.min),
                               (size_t)inl_min(rX.max, clip.x.max)};
   SOFTRASTER_TRI_BBOX_PIXELS((int64_t)(ry.max - ry.min) * (rx.max - rx.min));
-  if (alphaBlend)
+
+  const tri_increments_t<POS> inc = triIncrementsPre(bary);
+  const point_t<POS> startPt = {(POS)rx.min, (POS)ry.min};
+
+  // Compute initial orient values at (rx.min, ry.min)
+  POS orient_row[3] = {
+    orient(edge_t<POS>{point_t<POS>{bary.b.x, bary.b.y}, point_t<POS>{bary.c.x, bary.c.y}},
+           point_t<POS>{bary.a.x, bary.a.y}, startPt),
+    orient(edge_t<POS>{point_t<POS>{bary.c.x, bary.c.y}, point_t<POS>{bary.a.x, bary.a.y}},
+           point_t<POS>{bary.b.x, bary.b.y}, startPt),
+    orient(edge_t<POS>{point_t<POS>{bary.a.x, bary.a.y}, point_t<POS>{bary.b.x, bary.b.y}},
+           point_t<POS>{bary.c.x, bary.c.y}, startPt)
+  };
+
+  // Compute initial barycentric weights at (rx.min, ry.min)
+  POS p2x_init = startPt.x - bary.a.x;
+  POS p2y_init = startPt.y - bary.a.y;
+  POS d20_init = p2x_init * bary.p0.x + p2y_init * bary.p0.y;
+  POS d21_init = p2x_init * bary.p1.x + p2y_init * bary.p1.y;
+  float v_row = (bary.d11 * d20_init - bary.d01 * d21_init) * bary.denom;
+  float w_row = (bary.d00 * d21_init - bary.d01 * d20_init) * bary.denom;
+
+  for (size_t y = ry.min; y < ry.max; ++y)
   {
-    for (size_t y = ry.min; y < ry.max; ++y)
+    POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
+    float v = v_row, w = w_row;
+
+    for (size_t x = rx.min; x < rx.max; ++x)
     {
-      for (size_t x = rx.min; x < rx.max; ++x)
+      if (o0 >= 0 && o1 >= 0 && o2 >= 0)
       {
-        if (!triangle_hit(bary, x, y)) continue;
         SOFTRASTER_TRI_PIXEL_HIT();
+        float u_bary = 1.0f - v - w;
         pixel_t<POS, COLOR> p;
-        p.x = static_cast<POS>(x);
-        p.y = static_cast<POS>(y);
-        barycentricUV(p, bary);
+        p.u = (bary.a.u * u_bary) + (bary.b.u * v) + (bary.c.u * w);
+        p.v = (bary.a.v * u_bary) + (bary.b.v * v) + (bary.c.v * w);
 
         point_t<POS> coord = texCoord(p, tex);
 
-        screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %=
-          bary.a.c *
-          tex.at(static_cast<size_t>(coord.x), static_cast<size_t>(coord.y));
+        if (alphaBlend)
+          screen.at_unchecked(x, y) %=
+            bary.a.c *
+            tex.at_unchecked(static_cast<size_t>(coord.x), static_cast<size_t>(coord.y));
+        else
+          screen.at_unchecked(x, y) =
+            bary.a.c *
+            tex.at_unchecked(static_cast<size_t>(coord.x), static_cast<size_t>(coord.y));
       }
+      o0 += inc.orient_dx[0];
+      o1 += inc.orient_dx[1];
+      o2 += inc.orient_dx[2];
+      v += inc.v_dx;
+      w += inc.w_dx;
     }
-  }
-  else
-  {
-    for (size_t y = ry.min; y < ry.max; ++y)
-    {
-      for (size_t x = rx.min; x < rx.max; ++x)
-      {
-        if (!triangle_hit(bary, x, y)) continue;
-        SOFTRASTER_TRI_PIXEL_HIT();
-        pixel_t<POS, COLOR> p;
-        p.x = static_cast<POS>(x);
-        p.y = static_cast<POS>(y);
-        barycentricUV(p, bary);
-
-        point_t<POS> coord = texCoord(p, tex);
-
-        screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) =
-          bary.a.c *
-          tex.at(static_cast<size_t>(coord.x), static_cast<size_t>(coord.y));
-      }
-    }
+    orient_row[0] += inc.orient_dy[0];
+    orient_row[1] += inc.orient_dy[1];
+    orient_row[2] += inc.orient_dy[2];
+    v_row += inc.v_dy;
+    w_row += inc.w_dy;
   }
 }
 
-template<typename POS, typename SCREEN, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename COLOR>
 void renderTriCore(texture_t<SCREEN> &screen,
                    const clip_t<POS> &clip,
                    const range_t<POS> &rY,
                    const range_t<POS> &rX,
                    const bary_t<POS, COLOR> &bary,
-                   const bool uvBlend,
-                   const bool alphaBlend)
+                   const bool uvBlend)
 {
   const range_t<size_t> ry = {(size_t)inl_max(rY.min, clip.y.min),
                               (size_t)inl_min(rY.max, clip.y.max)};
@@ -332,148 +348,154 @@ void renderTriCore(texture_t<SCREEN> &screen,
 
   SOFTRASTER_TRI_BBOX_PIXELS((int64_t)(ry.max - ry.min) * (rx.max - rx.min));
 
+  const tri_increments_t<POS> inc = triIncrementsPre(bary);
+  const point_t<POS> startPt = {(POS)rx.min, (POS)ry.min};
+
+  POS orient_row[3] = {
+    orient(edge_t<POS>{point_t<POS>{bary.b.x, bary.b.y}, point_t<POS>{bary.c.x, bary.c.y}},
+           point_t<POS>{bary.a.x, bary.a.y}, startPt),
+    orient(edge_t<POS>{point_t<POS>{bary.c.x, bary.c.y}, point_t<POS>{bary.a.x, bary.a.y}},
+           point_t<POS>{bary.b.x, bary.b.y}, startPt),
+    orient(edge_t<POS>{point_t<POS>{bary.a.x, bary.a.y}, point_t<POS>{bary.b.x, bary.b.y}},
+           point_t<POS>{bary.c.x, bary.c.y}, startPt)
+  };
+
   if (uvBlend)
   {
-    if (alphaBlend)
+    POS p2x_init = startPt.x - bary.a.x;
+    POS p2y_init = startPt.y - bary.a.y;
+    POS d20_init = p2x_init * bary.p0.x + p2y_init * bary.p0.y;
+    POS d21_init = p2x_init * bary.p1.x + p2y_init * bary.p1.y;
+    float v_row = (bary.d11 * d20_init - bary.d01 * d21_init) * bary.denom;
+    float w_row = (bary.d00 * d21_init - bary.d01 * d20_init) * bary.denom;
+
+    for (size_t y = ry.min; y < ry.max; ++y)
     {
-      for (size_t y = ry.min; y < ry.max; ++y)
+      POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
+      float v = v_row, w = w_row;
+
+      for (size_t x = rx.min; x < rx.max; ++x)
       {
-        for (size_t x = rx.min; x < rx.max; ++x)
+        if (o0 >= 0 && o1 >= 0 && o2 >= 0)
         {
-          if (!triangle_hit(bary, x, y)) continue;
           SOFTRASTER_TRI_PIXEL_HIT();
-          pixel_t<POS, COLOR> p;
-          p.x = static_cast<POS>(x);
-          p.y = static_cast<POS>(y);
-          barycentricCol(p, bary);
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %= p.c;
+          float u_bary = 1.0f - v - w;
+          COLOR c = (bary.a.c * u_bary) + (bary.b.c * v) + (bary.c.c * w);
+          if (alphaBlend)
+            screen.at_unchecked(x, y) %= c;
+          else
+            screen.at_unchecked(x, y) = c;
         }
+        o0 += inc.orient_dx[0];
+        o1 += inc.orient_dx[1];
+        o2 += inc.orient_dx[2];
+        v += inc.v_dx;
+        w += inc.w_dx;
       }
-    }
-    else
-    {
-      for (size_t y = ry.min; y < ry.max; ++y)
-      {
-        for (size_t x = rx.min; x < rx.max; ++x)
-        {
-          if (!triangle_hit(bary, x, y)) continue;
-          SOFTRASTER_TRI_PIXEL_HIT();
-          pixel_t<POS, COLOR> p;
-          p.x = static_cast<POS>(x);
-          p.y = static_cast<POS>(y);
-          barycentricCol(p, bary);
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) = p.c;
-        }
-      }
+      orient_row[0] += inc.orient_dy[0];
+      orient_row[1] += inc.orient_dy[1];
+      orient_row[2] += inc.orient_dy[2];
+      v_row += inc.v_dy;
+      w_row += inc.w_dy;
     }
   }
   else
   {
-    if (alphaBlend)
+    for (size_t y = ry.min; y < ry.max; ++y)
     {
-      for (size_t y = ry.min; y < ry.max; ++y)
+      POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
+
+      for (size_t x = rx.min; x < rx.max; ++x)
       {
-        for (size_t x = rx.min; x < rx.max; ++x)
+        if (o0 >= 0 && o1 >= 0 && o2 >= 0)
         {
-          if (!triangle_hit(bary, x, y)) continue;
           SOFTRASTER_TRI_PIXEL_HIT();
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %=
-            bary.a.c;
+          if (alphaBlend)
+            screen.at_unchecked(x, y) %= bary.a.c;
+          else
+            screen.at_unchecked(x, y) = bary.a.c;
         }
+        o0 += inc.orient_dx[0];
+        o1 += inc.orient_dx[1];
+        o2 += inc.orient_dx[2];
       }
-    }
-    else
-    {
-      for (size_t y = ry.min; y < ry.max; ++y)
-      {
-        for (size_t x = rx.min; x < rx.max; ++x)
-        {
-          if (!triangle_hit(bary, x, y)) continue;
-          SOFTRASTER_TRI_PIXEL_HIT();
-          screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) = bary.a.c;
-        }
-      }
+      orient_row[0] += inc.orient_dy[0];
+      orient_row[1] += inc.orient_dy[1];
+      orient_row[2] += inc.orient_dy[2];
     }
   }
 }
 
-template<typename POS, typename SCREEN, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename COLOR>
 void renderTri(texture_t<SCREEN> &screen,
                const texture_base_t *tex,
                const clip_t<POS> &clip,
                const range_t<POS> &rY,
                const range_t<POS> &rX,
                const bary_t<POS, COLOR> &bary,
-               const bool uvBlend,
-               const bool alphaBlend)
+               const bool uvBlend)
 {
   switch (tex == nullptr ? texture_type_t::NONE : tex->type)
   {
     case texture_type_t::ALPHA8:
-      renderTriCore(screen,
+      renderTriCore<alphaBlend>(screen,
                     *reinterpret_cast<const texture_alpha8_t *>(tex),
                     clip,
                     rY,
                     rX,
-                    bary,
-                    alphaBlend);
+                    bary);
       break;
 
     case texture_type_t::VALUE8:
-      renderTriCore(screen,
+      renderTriCore<alphaBlend>(screen,
                     *reinterpret_cast<const texture_value8_t *>(tex),
                     clip,
                     rY,
                     rX,
-                    bary,
-                    alphaBlend);
+                    bary);
       break;
 
     case texture_type_t::COLOR16:
-      renderTriCore(screen,
+      renderTriCore<alphaBlend>(screen,
                     *reinterpret_cast<const texture_color16_t *>(tex),
                     clip,
                     rY,
                     rX,
-                    bary,
-                    alphaBlend);
+                    bary);
       break;
 
     case texture_type_t::COLOR24:
-      renderTriCore(screen,
+      renderTriCore<alphaBlend>(screen,
                     *reinterpret_cast<const texture_color24_t *>(tex),
                     clip,
                     rY,
                     rX,
-                    bary,
-                    alphaBlend);
+                    bary);
       break;
 
     case texture_type_t::COLOR32:
-      renderTriCore(screen,
+      renderTriCore<alphaBlend>(screen,
                     *reinterpret_cast<const texture_color32_t *>(tex),
                     clip,
                     rY,
                     rX,
-                    bary,
-                    alphaBlend);
+                    bary);
       break;
 
     default:
-      renderTriCore(screen, clip, rY, rX, bary, uvBlend, alphaBlend);
+      renderTriCore<alphaBlend>(screen, clip, rY, rX, bary, uvBlend);
       break;
   }
 }
 
-template<typename POS, typename SCREEN, typename COLOR>
+template<bool alphaBlend, typename POS, typename SCREEN, typename COLOR>
 void renderTri(texture_t<SCREEN> &screen,
                const texture_base_t *tex,
                const clip_t<POS> &clip,
                triangle_t<POS, COLOR> &tri,
-               const bool uvBlend,
-               const bool alphaBlend)
+               const bool uvBlend)
 {
-  renderTri(screen,
+  renderTri<alphaBlend>(screen,
             tex,
             clip,
             {inl_min(inl_min(tri.p1.y, tri.p2.y), tri.p3.y),
@@ -481,8 +503,7 @@ void renderTri(texture_t<SCREEN> &screen,
             {inl_min(inl_min(tri.p1.x, tri.p2.x), tri.p3.x),
              inl_max(inl_max(tri.p1.x, tri.p2.x), tri.p3.x) + 1},
             baryPre(tri.p1, tri.p2, tri.p3),
-            uvBlend,
-            alphaBlend);
+            uvBlend);
 }
 
 template<typename POS, typename SCREEN>
@@ -572,10 +593,9 @@ void renderCommand(texture_t<SCREEN> &screen,
         quad.p2.c = quad.p1.c;
 
         const bool noUV = (quad.p1.u == quad.p2.u) && (quad.p1.v == quad.p2.v);
-        const bool alphaBlend = true;
 
         SOFTRASTER_BEFORE_QUAD();
-        renderQuad(screen, noUV ? nullptr : texture, clip, quad, alphaBlend);
+        renderQuad<true>(screen, noUV ? nullptr : texture, clip, quad);
         SOFTRASTER_AFTER_QUAD();
 
         i += 3;
@@ -625,11 +645,10 @@ void renderCommand(texture_t<SCREEN> &screen,
                       (tri.p1.v == tri.p2.v) && (tri.p1.v == tri.p3.v);
     const bool flatCol =
       noUV || ((tri.p1.c == tri.p2.c) && (tri.p1.c == tri.p3.c));
-    const bool alphaBlend = true;
 
     SOFTRASTER_BEFORE_TRI();
-    renderTri(
-      screen, noUV ? nullptr : texture, clip, tri, !flatCol, alphaBlend);
+    renderTri<true>(
+      screen, noUV ? nullptr : texture, clip, tri, !flatCol);
     SOFTRASTER_AFTER_TRI();
   }
 }
