@@ -617,8 +617,17 @@ extern "C" void imgui_port_render(void)
     const int n_pixels = s_width * s_height;
 
     PROF_BEGIN();
-    for (int i = 0; i < n_pixels; ++i) {
-        s_render_buf[i] = color32_t(0, 0, 0, 255);
+    {
+        /* Fill with opaque black (0x000000FF on big-endian, 0xFF000000 on
+         * little-endian).  Using a 32-bit word fill avoids per-struct
+         * construction overhead and lets the compiler emit tight store loops. */
+        const color32_t black{0, 0, 0, 255};
+        uint32_t word;
+        memcpy(&word, &black, sizeof(word));
+        uint32_t *p = reinterpret_cast<uint32_t *>(s_render_buf);
+        for (int i = 0; i < n_pixels; ++i) {
+            p[i] = word;
+        }
     }
     PROF_END(clear);
 

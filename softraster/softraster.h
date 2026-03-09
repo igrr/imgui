@@ -173,23 +173,48 @@ void renderQuadCore(texture_t<SCREEN> &screen,
     SOFTRASTER_QUAD_CATEGORY(true, false, _qpx);
   }
 
-  if (alphaBlend)
+  if (alphaBlend && quad.p1.c.A() == 0x00U)
   {
+    // Fully transparent: nothing to draw.
+    return;
+  }
+
+  if (!alphaBlend || quad.p1.c.A() == 0xFFU)
+  {
+    // Opaque or no blending: write constant color directly, row by row.
+    // Pack color into a 32-bit word for fast filling.
+    uint32_t word;
+    memcpy(&word, &quad.p1.c, sizeof(word));
+    const POS width = rx.max - rx.min;
     for (POS y = ry.min; y < ry.max; ++y)
     {
-      for (POS x = rx.min; x < rx.max; ++x)
-      {
-        screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) %= quad.p1.c;
-      }
+      uint32_t *row = reinterpret_cast<uint32_t *>(
+        &screen.at_unchecked(static_cast<size_t>(rx.min), static_cast<size_t>(y)));
+      for (POS x = 0; x < width; ++x)
+        row[x] = word;
     }
   }
   else
   {
+    // Semi-transparent solid fill.  The source color is constant across
+    // all pixels and the destination is always opaque (a == 0xFF), so we
+    // hoist the source components out of the loop and use a branchless
+    // inner loop with the same lerp formula as the blend operator:
+    //   dst.c += (src_a * (src_c - dst.c)) >> 8
+    const int src_a = quad.p1.c.A();
+    const int src_r = quad.p1.c.R();
+    const int src_g = quad.p1.c.G();
+    const int src_b = quad.p1.c.B();
     for (POS y = ry.min; y < ry.max; ++y)
     {
       for (POS x = rx.min; x < rx.max; ++x)
       {
-        screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y)) = quad.p1.c;
+        SCREEN &dst = screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y));
+        dst = SCREEN(
+          static_cast<uint8_t>(dst.R() + ((src_a * (src_r - dst.R())) >> 8)),
+          static_cast<uint8_t>(dst.G() + ((src_a * (src_g - dst.G())) >> 8)),
+          static_cast<uint8_t>(dst.B() + ((src_a * (src_b - dst.B())) >> 8)),
+          dst.A());
       }
     }
   }
