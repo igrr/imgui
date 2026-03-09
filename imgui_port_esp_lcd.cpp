@@ -66,6 +66,19 @@ static struct {
     int     rast_tri_count;   /* number of triangles rendered */
     int     rast_cmd_count;   /* number of draw commands */
     int     rast_elem_count;  /* total index elements processed */
+
+    /* Pixel-level counters (for cost-per-pixel analysis) */
+    int64_t quad_pixels;      /* total pixels filled by quads */
+    int64_t tri_pixels;       /* total pixels filled by triangles (inside triangle) */
+    int64_t tri_bbox_pixels;  /* total bounding-box pixels tested for triangles */
+
+    /* Quad sub-category counts */
+    int     quad_solid_count;     /* quads with no texture (solid color fill) */
+    int     quad_blit_count;      /* quads with 1:1 texture blit */
+    int     quad_scaled_count;    /* quads with scaled texture */
+    int64_t quad_solid_pixels;
+    int64_t quad_blit_pixels;
+    int64_t quad_scaled_pixels;
 } s_prof_cur, s_prof_acc;
 
 static int s_prof_frames = 0;
@@ -87,6 +100,16 @@ static int64_t s_prof_ts;
 #define SOFTRASTER_BEFORE_TRI()   do { int64_t _tt0 = esp_timer_get_time();
 #define SOFTRASTER_AFTER_TRI()    s_prof_cur.rast_tris += esp_timer_get_time() - _tt0; \
                                   s_prof_cur.rast_tri_count++; } while (0)
+
+/* Pixel-level profiling hooks called from inside softraster render loops */
+#define SOFTRASTER_QUAD_PIXELS(n)       do { s_prof_cur.quad_pixels += (n); } while (0)
+#define SOFTRASTER_TRI_PIXEL_HIT()      do { s_prof_cur.tri_pixels++; } while (0)
+#define SOFTRASTER_TRI_BBOX_PIXELS(n)   do { s_prof_cur.tri_bbox_pixels += (n); } while (0)
+#define SOFTRASTER_QUAD_CATEGORY(is_solid, is_blit, px) do { \
+    if (is_solid) { s_prof_cur.quad_solid_count++; s_prof_cur.quad_solid_pixels += (px); } \
+    else if (is_blit) { s_prof_cur.quad_blit_count++; s_prof_cur.quad_blit_pixels += (px); } \
+    else { s_prof_cur.quad_scaled_count++; s_prof_cur.quad_scaled_pixels += (px); } \
+} while (0)
 
 #else /* !CONFIG_IMGUI_PROFILING */
 
@@ -363,6 +386,34 @@ static void profiling_print_console(void)
              s_prof_acc.rast_quad_count / n, s_prof_acc.rast_tri_count / n,
              s_prof_acc.rast_cmd_count / n, s_prof_acc.rast_elem_count / n);
 
+    /* Pixel-level analysis */
+    int64_t quad_px = s_prof_acc.quad_pixels / n;
+    int64_t tri_px = s_prof_acc.tri_pixels / n;
+    int64_t tri_bbox_px = s_prof_acc.tri_bbox_pixels / n;
+    int64_t quad_us = s_prof_acc.rast_quads / n;
+    int64_t tri_us = s_prof_acc.rast_tris / n;
+    ESP_LOGI(TAG, "IMGUI_PIXELS: quad_px=%" PRId64 " tri_px=%" PRId64
+             " tri_bbox_px=%" PRId64 " tri_fill_ratio=%d%%"
+             " quad_ns_per_px=%" PRId64 " tri_ns_per_px=%" PRId64,
+             quad_px, tri_px, tri_bbox_px,
+             tri_bbox_px ? (int)(tri_px * 100 / tri_bbox_px) : 0,
+             quad_px ? (quad_us * 1000 / quad_px) : 0,
+             tri_px ? (tri_us * 1000 / tri_px) : 0);
+
+    /* Quad sub-category breakdown */
+    ESP_LOGI(TAG, "IMGUI_QUAD_CAT: solid=%d/%d(%" PRId64 "px)"
+             " blit=%d/%d(%" PRId64 "px)"
+             " scaled=%d/%d(%" PRId64 "px)",
+             s_prof_acc.quad_solid_count / n,
+             s_prof_acc.rast_quad_count / n,
+             s_prof_acc.quad_solid_pixels / n,
+             s_prof_acc.quad_blit_count / n,
+             s_prof_acc.rast_quad_count / n,
+             s_prof_acc.quad_blit_pixels / n,
+             s_prof_acc.quad_scaled_count / n,
+             s_prof_acc.rast_quad_count / n,
+             s_prof_acc.quad_scaled_pixels / n);
+
     /* Reset accumulators */
     memset(&s_prof_acc, 0, sizeof(s_prof_acc));
     s_prof_frames = 0;
@@ -630,6 +681,15 @@ extern "C" void imgui_port_render(void)
     s_prof_acc.rast_tri_count  += s_prof_cur.rast_tri_count;
     s_prof_acc.rast_cmd_count  += s_prof_cur.rast_cmd_count;
     s_prof_acc.rast_elem_count += s_prof_cur.rast_elem_count;
+    s_prof_acc.quad_pixels       += s_prof_cur.quad_pixels;
+    s_prof_acc.tri_pixels        += s_prof_cur.tri_pixels;
+    s_prof_acc.tri_bbox_pixels   += s_prof_cur.tri_bbox_pixels;
+    s_prof_acc.quad_solid_count  += s_prof_cur.quad_solid_count;
+    s_prof_acc.quad_blit_count   += s_prof_cur.quad_blit_count;
+    s_prof_acc.quad_scaled_count += s_prof_cur.quad_scaled_count;
+    s_prof_acc.quad_solid_pixels += s_prof_cur.quad_solid_pixels;
+    s_prof_acc.quad_blit_pixels  += s_prof_cur.quad_blit_pixels;
+    s_prof_acc.quad_scaled_pixels += s_prof_cur.quad_scaled_pixels;
     s_prof_frames++;
 
     /* Clear for next frame (after accumulation, so new_frame timing from
