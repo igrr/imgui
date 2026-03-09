@@ -10,6 +10,26 @@
 #include "texture.h"
 #include "utils.h"
 
+/*
+ * Optional profiling hooks.  Define these macros before including softraster.h
+ * to instrument the renderCommand() template without duplicating its code.
+ *
+ *   SOFTRASTER_BEFORE_QUAD() / SOFTRASTER_AFTER_QUAD()
+ *   SOFTRASTER_BEFORE_TRI()  / SOFTRASTER_AFTER_TRI()
+ */
+#ifndef SOFTRASTER_BEFORE_QUAD
+#define SOFTRASTER_BEFORE_QUAD()  /* empty */
+#endif
+#ifndef SOFTRASTER_AFTER_QUAD
+#define SOFTRASTER_AFTER_QUAD()   /* empty */
+#endif
+#ifndef SOFTRASTER_BEFORE_TRI
+#define SOFTRASTER_BEFORE_TRI()   /* empty */
+#endif
+#ifndef SOFTRASTER_AFTER_TRI
+#define SOFTRASTER_AFTER_TRI()    /* empty */
+#endif
+
 template<typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
 void renderQuadCore(texture_t<SCREEN> &screen,
                     const texture_t<TEXTURE> &tex,
@@ -519,7 +539,9 @@ void renderCommand(texture_t<SCREEN> &screen,
         const bool noUV = (quad.p1.u == quad.p2.u) && (quad.p1.v == quad.p2.v);
         const bool alphaBlend = true;
 
+        SOFTRASTER_BEFORE_QUAD();
         renderQuad(screen, noUV ? nullptr : texture, clip, quad, alphaBlend);
+        SOFTRASTER_AFTER_QUAD();
 
         i += 3;
         continue;
@@ -570,8 +592,10 @@ void renderCommand(texture_t<SCREEN> &screen,
       noUV || ((tri.p1.c == tri.p2.c) && (tri.p1.c == tri.p3.c));
     const bool alphaBlend = true;
 
+    SOFTRASTER_BEFORE_TRI();
     renderTri(
       screen, noUV ? nullptr : texture, clip, tri, !flatCol, alphaBlend);
+    SOFTRASTER_AFTER_TRI();
   }
 }
 

@@ -119,6 +119,54 @@ def test_imgui_perf(dut):
     print(f'Stable FPS: {stable_fps}')
     assert stable_fps > 0, f'FPS too low: {stable_fps}'
 
+    # Collect profiling data (per-stage timing breakdown in microseconds).
+    # The profiling output is printed once per second by the port layer.
+    prof_pattern = re.compile(
+        r'IMGUI_PROF: new_frame=(\d+) render=(\d+) clear=(\d+) '
+        r'rasterize=(\d+) convert=(\d+) flush=(\d+) total=(\d+) frames=(\d+)'
+    )
+    prof_match = dut.expect(prof_pattern, timeout=5)
+    prof = {
+        'new_frame': int(_to_str(prof_match.group(1))),
+        'render': int(_to_str(prof_match.group(2))),
+        'clear': int(_to_str(prof_match.group(3))),
+        'rasterize': int(_to_str(prof_match.group(4))),
+        'convert': int(_to_str(prof_match.group(5))),
+        'flush': int(_to_str(prof_match.group(6))),
+        'total': int(_to_str(prof_match.group(7))),
+        'frames': int(_to_str(prof_match.group(8))),
+    }
+    print(f'Profiling breakdown (avg us/frame): {prof}')
+    for stage in ('new_frame', 'render', 'clear', 'rasterize', 'convert', 'flush'):
+        if prof['total'] > 0:
+            pct = 100.0 * prof[stage] / prof['total']
+            print(f'  {stage:12s}: {prof[stage]:6d} us ({pct:5.1f}%)')
+    print(f'  {"total":12s}: {prof["total"]:6d} us')
+
+    # Collect rasterization sub-breakdown
+    rast_pattern = re.compile(
+        r'IMGUI_RAST: quads=(\d+) tris=(\d+) overhead=(-?\d+) '
+        r'quad_count=(\d+) tri_count=(\d+) cmd_count=(\d+) elem_count=(\d+)'
+    )
+    rast_match = dut.expect(rast_pattern, timeout=5)
+    rast = {
+        'quads': int(_to_str(rast_match.group(1))),
+        'tris': int(_to_str(rast_match.group(2))),
+        'overhead': int(_to_str(rast_match.group(3))),
+        'quad_count': int(_to_str(rast_match.group(4))),
+        'tri_count': int(_to_str(rast_match.group(5))),
+        'cmd_count': int(_to_str(rast_match.group(6))),
+        'elem_count': int(_to_str(rast_match.group(7))),
+    }
+    print(f'\nRasterization sub-breakdown (avg us/frame):')
+    rast_total = rast['quads'] + rast['tris'] + rast['overhead']
+    for stage in ('quads', 'tris', 'overhead'):
+        if rast_total > 0:
+            pct = 100.0 * rast[stage] / rast_total
+            print(f'  {stage:12s}: {rast[stage]:6d} us ({pct:5.1f}%)')
+    print(f'  Primitives: {rast["quad_count"]} quads, {rast["tri_count"]} tris')
+    print(f'  Draw commands: {rast["cmd_count"]}, elements: {rast["elem_count"]}')
+
     # Golden image comparison
     if fb_result is not None:
         width, height, bpp, raw_data = fb_result

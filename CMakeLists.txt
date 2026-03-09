@@ -15,3 +15,13 @@ idf_component_register(
 target_compile_definitions(__idf_imgui PRIVATE
     IMGUI_USER_CONFIG="imgui_esp_config.h"
 )
+
+# When profiling is enabled, use linker --wrap to intercept upstream ImGui
+# functions (C++ Itanium-ABI mangled names) so we can add timing without
+# modifying the imgui submodule.
+if(CONFIG_IMGUI_PROFILING)
+    target_link_options(__idf_imgui INTERFACE
+        -Wl,--wrap=_ZN5ImGui8NewFrameEv    # ImGui::NewFrame()
+        -Wl,--wrap=_ZN5ImGui6RenderEv      # ImGui::Render()
+    )
+endif()

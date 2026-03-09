@@ -134,6 +134,17 @@ void imgui_port_enable_fps_counter_ui(void);
  */
 void imgui_port_enable_fps_counter_console(void);
 
+/**
+ * @brief Enable rendering profiling output to the console.
+ *
+ * Prints a per-stage timing breakdown of the rendering pipeline once per
+ * second, showing the average time (in microseconds) spent in each stage.
+ *
+ * Requires CONFIG_IMGUI_PROFILING=y.  If profiling is not enabled, logs a
+ * warning and does nothing.
+ */
+void imgui_port_enable_profiling_console(void);
+
 #ifdef __cplusplus
 }
 #endif
