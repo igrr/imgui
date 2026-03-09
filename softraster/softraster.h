@@ -30,6 +30,20 @@
 #define SOFTRASTER_AFTER_TRI()    /* empty */
 #endif
 
+/* Pixel-level profiling hooks (default: no-op) */
+#ifndef SOFTRASTER_QUAD_PIXELS
+#define SOFTRASTER_QUAD_PIXELS(n)       /* empty */
+#endif
+#ifndef SOFTRASTER_TRI_PIXEL_HIT
+#define SOFTRASTER_TRI_PIXEL_HIT()      /* empty */
+#endif
+#ifndef SOFTRASTER_TRI_BBOX_PIXELS
+#define SOFTRASTER_TRI_BBOX_PIXELS(n)   /* empty */
+#endif
+#ifndef SOFTRASTER_QUAD_CATEGORY
+#define SOFTRASTER_QUAD_CATEGORY(is_solid, is_blit, px) /* empty */
+#endif
+
 template<typename POS, typename SCREEN, typename TEXTURE, typename COLOR>
 void renderQuadCore(texture_t<SCREEN> &screen,
                     const texture_t<TEXTURE> &tex,
@@ -63,6 +77,12 @@ void renderQuadCore(texture_t<SCREEN> &screen,
   const float startv = qv.min + (yoffset > 0 ? dvDy * yoffset : 0);
 
   bool blit = ((duDx == 1.0f) && (dvDy == 1.0f));
+
+  {
+    int64_t _qpx = (int64_t)(rx.max - rx.min) * (ry.max - ry.min);
+    SOFTRASTER_QUAD_PIXELS(_qpx);
+    SOFTRASTER_QUAD_CATEGORY(false, blit, _qpx);
+  }
 
   if (blit)
   {
@@ -148,6 +168,12 @@ void renderQuadCore(texture_t<SCREEN> &screen,
 
   const range_t<POS> rx = inl_min({quad.p1.x, quad.p2.x}, clip.x);
   const range_t<POS> ry = inl_min({quad.p1.y, quad.p2.y}, clip.y);
+
+  {
+    int64_t _qpx = (int64_t)(rx.max - rx.min) * (ry.max - ry.min);
+    SOFTRASTER_QUAD_PIXELS(_qpx);
+    SOFTRASTER_QUAD_CATEGORY(true, false, _qpx);
+  }
 
   if (alphaBlend)
   {
@@ -245,6 +271,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
                               (size_t)inl_min(rY.max, clip.y.max)};
   const range_t<size_t> rx = {(size_t)inl_max(rX.min, clip.x.min),
                               (size_t)inl_min(rX.max, clip.x.max)};
+  SOFTRASTER_TRI_BBOX_PIXELS((int64_t)(ry.max - ry.min) * (rx.max - rx.min));
   if (alphaBlend)
   {
     for (size_t y = ry.min; y < ry.max; ++y)
@@ -252,6 +279,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
       for (size_t x = rx.min; x < rx.max; ++x)
       {
         if (!triangle_hit(bary, x, y)) continue;
+        SOFTRASTER_TRI_PIXEL_HIT();
         pixel_t<POS, COLOR> p;
         p.x = static_cast<POS>(x);
         p.y = static_cast<POS>(y);
@@ -272,6 +300,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
       for (size_t x = rx.min; x < rx.max; ++x)
       {
         if (!triangle_hit(bary, x, y)) continue;
+        SOFTRASTER_TRI_PIXEL_HIT();
         pixel_t<POS, COLOR> p;
         p.x = static_cast<POS>(x);
         p.y = static_cast<POS>(y);
@@ -301,6 +330,8 @@ void renderTriCore(texture_t<SCREEN> &screen,
   const range_t<size_t> rx = {(size_t)inl_max(rX.min, clip.x.min),
                               (size_t)inl_min(rX.max, clip.x.max)};
 
+  SOFTRASTER_TRI_BBOX_PIXELS((int64_t)(ry.max - ry.min) * (rx.max - rx.min));
+
   if (uvBlend)
   {
     if (alphaBlend)
@@ -310,6 +341,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
         for (size_t x = rx.min; x < rx.max; ++x)
         {
           if (!triangle_hit(bary, x, y)) continue;
+          SOFTRASTER_TRI_PIXEL_HIT();
           pixel_t<POS, COLOR> p;
           p.x = static_cast<POS>(x);
           p.y = static_cast<POS>(y);
@@ -325,6 +357,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
         for (size_t x = rx.min; x < rx.max; ++x)
         {
           if (!triangle_hit(bary, x, y)) continue;
+          SOFTRASTER_TRI_PIXEL_HIT();
           pixel_t<POS, COLOR> p;
           p.x = static_cast<POS>(x);
           p.y = static_cast<POS>(y);
@@ -343,6 +376,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
         for (size_t x = rx.min; x < rx.max; ++x)
         {
           if (!triangle_hit(bary, x, y)) continue;
+          SOFTRASTER_TRI_PIXEL_HIT();
           screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) %=
             bary.a.c;
         }
@@ -355,6 +389,7 @@ void renderTriCore(texture_t<SCREEN> &screen,
         for (size_t x = rx.min; x < rx.max; ++x)
         {
           if (!triangle_hit(bary, x, y)) continue;
+          SOFTRASTER_TRI_PIXEL_HIT();
           screen.at(static_cast<size_t>(x), static_cast<size_t>(y)) = bary.a.c;
         }
       }

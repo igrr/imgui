@@ -167,6 +167,40 @@ def test_imgui_perf(dut):
     print(f'  Primitives: {rast["quad_count"]} quads, {rast["tri_count"]} tris')
     print(f'  Draw commands: {rast["cmd_count"]}, elements: {rast["elem_count"]}')
 
+    # Collect pixel-level analysis
+    px_pattern = re.compile(
+        r'IMGUI_PIXELS: quad_px=(\d+) tri_px=(\d+) tri_bbox_px=(\d+) '
+        r'tri_fill_ratio=(\d+)% quad_ns_per_px=(\d+) tri_ns_per_px=(\d+)'
+    )
+    px_match = dut.expect(px_pattern, timeout=5)
+    px = {
+        'quad_px': int(_to_str(px_match.group(1))),
+        'tri_px': int(_to_str(px_match.group(2))),
+        'tri_bbox_px': int(_to_str(px_match.group(3))),
+        'tri_fill_ratio': int(_to_str(px_match.group(4))),
+        'quad_ns_per_px': int(_to_str(px_match.group(5))),
+        'tri_ns_per_px': int(_to_str(px_match.group(6))),
+    }
+    print(f'\nPixel-level analysis (avg per frame):')
+    print(f'  Quad pixels filled: {px["quad_px"]}')
+    print(f'  Tri pixels filled:  {px["tri_px"]}')
+    print(f'  Tri bbox tested:    {px["tri_bbox_px"]}')
+    print(f'  Tri fill ratio:     {px["tri_fill_ratio"]}%')
+    print(f'  Quad cost:          {px["quad_ns_per_px"]} ns/pixel')
+    print(f'  Tri cost:           {px["tri_ns_per_px"]} ns/pixel')
+
+    # Collect quad sub-category breakdown
+    qcat_pattern = re.compile(
+        r'IMGUI_QUAD_CAT: solid=(\d+)/(\d+)\((\d+)px\) '
+        r'blit=(\d+)/(\d+)\((\d+)px\) '
+        r'scaled=(\d+)/(\d+)\((\d+)px\)'
+    )
+    qcat_match = dut.expect(qcat_pattern, timeout=5)
+    print(f'\nQuad sub-categories (avg per frame):')
+    print(f'  Solid color: {_to_str(qcat_match.group(1))}/{_to_str(qcat_match.group(2))} quads, {_to_str(qcat_match.group(3))} pixels')
+    print(f'  Blit (1:1):  {_to_str(qcat_match.group(4))}/{_to_str(qcat_match.group(5))} quads, {_to_str(qcat_match.group(6))} pixels')
+    print(f'  Scaled:      {_to_str(qcat_match.group(7))}/{_to_str(qcat_match.group(8))} quads, {_to_str(qcat_match.group(9))} pixels')
+
     # Golden image comparison
     if fb_result is not None:
         width, height, bpp, raw_data = fb_result
