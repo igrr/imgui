@@ -18,6 +18,7 @@
 #include "freertos/task.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "esp_lcd_screenshot.h"
 
 #include "imgui.h"
@@ -25,9 +26,11 @@
 
 static const char *TAG = "imgui_perf";
 
-/* Virtual framebuffer dimensions */
-#define FB_WIDTH  480
-#define FB_HEIGHT 320
+/* Virtual framebuffer dimensions.
+ * 320x240x4 = 300 kB — fits in internal SRAM on ESP32-P4, avoiding PSRAM
+ * bandwidth bottleneck so rasterizer optimizations can be measured cleanly. */
+#define FB_WIDTH  320
+#define FB_HEIGHT 240
 
 static void draw_test_scene(void)
 {
@@ -76,6 +79,23 @@ static void draw_test_scene(void)
 
 extern "C" void app_main(void)
 {
+    /* Allocate render buffer from internal RAM for best performance.
+     * Fall back to PSRAM if internal RAM doesn't have enough space. */
+    const size_t fb_bytes = FB_WIDTH * FB_HEIGHT * sizeof(uint32_t);
+    void *render_buf = heap_caps_malloc(fb_bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (render_buf) {
+        ESP_LOGI(TAG, "Render buffer (%u kB) allocated in internal RAM", (unsigned)(fb_bytes / 1024));
+    } else {
+        render_buf = heap_caps_malloc(fb_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (render_buf) {
+            ESP_LOGI(TAG, "Render buffer (%u kB) allocated in PSRAM (internal RAM too small)",
+                     (unsigned)(fb_bytes / 1024));
+        } else {
+            ESP_LOGE(TAG, "Failed to allocate render buffer (%u kB)", (unsigned)(fb_bytes / 1024));
+            return;
+        }
+    }
+
     /* Create a virtual screenshot panel (no real LCD needed) */
     esp_lcd_panel_handle_t panel = nullptr;
     const esp_lcd_screenshot_config_t screenshot_cfg = {
@@ -93,7 +113,7 @@ extern "C" void app_main(void)
         .panel_handle  = panel,
         .width         = FB_WIDTH,
         .height        = FB_HEIGHT,
-        .render_buf    = nullptr,
+        .render_buf    = render_buf,
         .renderer      = renderer,
     };
     ESP_ERROR_CHECK(imgui_port_init(&port_cfg));
