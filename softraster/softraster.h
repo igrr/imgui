@@ -196,25 +196,34 @@ void renderQuadCore(texture_t<SCREEN> &screen,
   }
   else
   {
-    // Semi-transparent solid fill.  The source color is constant across
-    // all pixels and the destination is always opaque (a == 0xFF), so we
-    // hoist the source components out of the loop and use a branchless
-    // inner loop with the same lerp formula as the blend operator:
-    //   dst.c += (src_a * (src_c - dst.c)) >> 8
-    const int src_a = quad.p1.c.A();
-    const int src_r = quad.p1.c.R();
-    const int src_g = quad.p1.c.G();
-    const int src_b = quad.p1.c.B();
+    // Semi-transparent solid fill using "SIMD within a register":
+    // pack R (byte 0) and B (byte 2) into 16-bit lanes of a uint32_t
+    // and blend both channels with a single multiply + shift.
+    //
+    // On little-endian the color32_t {r,g,b,a} word layout is 0xAABBGGRR,
+    // so (word & 0x00FF00FF) extracts R and B in separate 16-bit lanes.
+    //
+    // Safety: each lane holds dst_c*(255-a) + src_c*a which is a linear
+    // interpolation bounded by 255*255 = 65025 < 65536, so no carry
+    // between the two packed lanes.
+    const uint32_t alpha = quad.p1.c.A();
+    const uint32_t inv_alpha = 255 - alpha;
+    const uint32_t src_rb_a = ((uint32_t)quad.p1.c.R() * alpha) |
+                              (((uint32_t)quad.p1.c.B() * alpha) << 16);
+    const uint32_t src_g_a  = (uint32_t)quad.p1.c.G() * alpha;
+    const POS width = rx.max - rx.min;
     for (POS y = ry.min; y < ry.max; ++y)
     {
-      for (POS x = rx.min; x < rx.max; ++x)
+      uint32_t *row = reinterpret_cast<uint32_t *>(
+        &screen.at_unchecked(static_cast<size_t>(rx.min), static_cast<size_t>(y)));
+      for (POS x = 0; x < width; ++x)
       {
-        SCREEN &dst = screen.at_unchecked(static_cast<size_t>(x), static_cast<size_t>(y));
-        dst = SCREEN(
-          static_cast<uint8_t>(dst.R() + ((src_a * (src_r - dst.R())) >> 8)),
-          static_cast<uint8_t>(dst.G() + ((src_a * (src_g - dst.G())) >> 8)),
-          static_cast<uint8_t>(dst.B() + ((src_a * (src_b - dst.B())) >> 8)),
-          dst.A());
+        uint32_t dst = row[x];
+        uint32_t dst_rb = dst & 0x00FF00FFU;
+        uint32_t dst_g  = (dst >> 8) & 0xFFU;
+        uint32_t out_rb = ((dst_rb * inv_alpha + src_rb_a) >> 8) & 0x00FF00FFU;
+        uint32_t out_g  = ((dst_g  * inv_alpha + src_g_a)  >> 8) & 0xFFU;
+        row[x] = out_rb | (out_g << 8) | (dst & 0xFF000000U);
       }
     }
   }
@@ -322,11 +331,13 @@ void renderTriCore(texture_t<SCREEN> &screen,
   {
     POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
     float v = v_row, w = w_row;
+    bool entered = false;
 
     for (size_t x = rx.min; x < rx.max; ++x)
     {
       if (o0 >= 0 && o1 >= 0 && o2 >= 0)
       {
+        entered = true;
         SOFTRASTER_TRI_PIXEL_HIT();
         float u_bary = 1.0f - v - w;
         pixel_t<POS, COLOR> p;
@@ -343,6 +354,10 @@ void renderTriCore(texture_t<SCREEN> &screen,
           screen.at_unchecked(x, y) =
             bary.a.c *
             tex.at_unchecked(static_cast<size_t>(coord.x), static_cast<size_t>(coord.y));
+      }
+      else if (entered)
+      {
+        break;
       }
       o0 += inc.orient_dx[0];
       o1 += inc.orient_dx[1];
@@ -398,11 +413,13 @@ void renderTriCore(texture_t<SCREEN> &screen,
     {
       POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
       float v = v_row, w = w_row;
+      bool entered = false;
 
       for (size_t x = rx.min; x < rx.max; ++x)
       {
         if (o0 >= 0 && o1 >= 0 && o2 >= 0)
         {
+          entered = true;
           SOFTRASTER_TRI_PIXEL_HIT();
           float u_bary = 1.0f - v - w;
           COLOR c = (bary.a.c * u_bary) + (bary.b.c * v) + (bary.c.c * w);
@@ -410,6 +427,10 @@ void renderTriCore(texture_t<SCREEN> &screen,
             screen.at_unchecked(x, y) %= c;
           else
             screen.at_unchecked(x, y) = c;
+        }
+        else if (entered)
+        {
+          break;
         }
         o0 += inc.orient_dx[0];
         o1 += inc.orient_dx[1];
@@ -429,16 +450,22 @@ void renderTriCore(texture_t<SCREEN> &screen,
     for (size_t y = ry.min; y < ry.max; ++y)
     {
       POS o0 = orient_row[0], o1 = orient_row[1], o2 = orient_row[2];
+      bool entered = false;
 
       for (size_t x = rx.min; x < rx.max; ++x)
       {
         if (o0 >= 0 && o1 >= 0 && o2 >= 0)
         {
+          entered = true;
           SOFTRASTER_TRI_PIXEL_HIT();
           if (alphaBlend)
             screen.at_unchecked(x, y) %= bary.a.c;
           else
             screen.at_unchecked(x, y) = bary.a.c;
+        }
+        else if (entered)
+        {
+          break;
         }
         o0 += inc.orient_dx[0];
         o1 += inc.orient_dx[1];
