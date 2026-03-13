@@ -1,11 +1,21 @@
+set(srcs
+    "imgui_port_esp_lcd.cpp"
+    "imgui/imgui.cpp"
+    "imgui/imgui_draw.cpp"
+    "imgui/imgui_tables.cpp"
+    "imgui/imgui_widgets.cpp"
+    "imgui/imgui_demo.cpp"
+)
+
+# Chip-specific optimized rendering functions.
+# Each target can provide SIMD/accelerated implementations that replace
+# the generic C++ paths in softraster.h and imgui_port_esp_lcd.cpp.
+if(CONFIG_SOC_CPU_HAS_PIE)
+    list(APPEND srcs "softraster/pie_opt.c")
+endif()
+
 idf_component_register(
-    SRCS
-       "imgui_port_esp_lcd.cpp"
-       "imgui/imgui.cpp"
-       "imgui/imgui_draw.cpp"
-       "imgui/imgui_tables.cpp"
-       "imgui/imgui_widgets.cpp"
-       "imgui/imgui_demo.cpp"
+    SRCS ${srcs}
     INCLUDE_DIRS "include" "imgui"
     PRIV_INCLUDE_DIRS "."
     REQUIRES "esp_lcd"

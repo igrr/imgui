@@ -28,6 +28,10 @@
 
 #include "sdkconfig.h"
 
+#if CONFIG_SOC_CPU_HAS_PIE
+#include "softraster/pie_opt.h"
+#endif
+
 static const char *TAG = "imgui_port";
 
 /* -------------------------------------------------------------------------- */
@@ -218,11 +222,15 @@ static void *psram_alloc(size_t size)
  */
 static void convert_argb8888(color32_t *src, void * /*dst*/, int n)
 {
+#if CONFIG_SOC_CPU_HAS_PIE
+    pie_swap_rb(reinterpret_cast<uint32_t *>(src), n);
+#else
     for (int i = 0; i < n; ++i) {
         uint8_t tmp = src[i].r;
         src[i].r    = src[i].b;
         src[i].b    = tmp;
     }
+#endif
 }
 
 /*
@@ -624,10 +632,14 @@ extern "C" void imgui_port_render(void)
         const color32_t black{0, 0, 0, 255};
         uint32_t word;
         memcpy(&word, &black, sizeof(word));
+#if CONFIG_SOC_CPU_HAS_PIE
+        pie_fill_u32(reinterpret_cast<uint32_t *>(s_render_buf), word, n_pixels);
+#else
         uint32_t *p = reinterpret_cast<uint32_t *>(s_render_buf);
         for (int i = 0; i < n_pixels; ++i) {
             p[i] = word;
         }
+#endif
     }
     PROF_END(clear);
 
