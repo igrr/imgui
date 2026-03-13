@@ -10,6 +10,10 @@
 #include "texture.h"
 #include "utils.h"
 
+#ifdef CONFIG_SOC_CPU_HAS_PIE
+#include "pie_opt.h"
+#endif
+
 /*
  * Optional profiling hooks.  Define these macros before including softraster.h
  * to instrument the renderCommand() template without duplicating its code.
@@ -190,15 +194,32 @@ void renderQuadCore(texture_t<SCREEN> &screen,
     {
       uint32_t *row = reinterpret_cast<uint32_t *>(
         &screen.at_unchecked(static_cast<size_t>(rx.min), static_cast<size_t>(y)));
+#ifdef CONFIG_SOC_CPU_HAS_PIE
+      pie_fill_u32(row, word, width);
+#else
       for (POS x = 0; x < width; ++x)
         row[x] = word;
+#endif
     }
   }
   else
   {
-    // Semi-transparent solid fill using "SIMD within a register":
-    // pack R (byte 0) and B (byte 2) into 16-bit lanes of a uint32_t
-    // and blend both channels with a single multiply + shift.
+    // Semi-transparent solid fill.
+    const POS width = rx.max - rx.min;
+#ifdef CONFIG_SOC_CPU_HAS_PIE
+    // PIE vectorized blend: processes 4 pixels at a time using 128-bit
+    // vector multiply and add.
+    const uint8_t alpha = quad.p1.c.A();
+    for (POS y = ry.min; y < ry.max; ++y)
+    {
+      uint32_t *row = reinterpret_cast<uint32_t *>(
+        &screen.at_unchecked(static_cast<size_t>(rx.min), static_cast<size_t>(y)));
+      pie_blend_solid_row(row, width, quad.p1.c.R(), quad.p1.c.G(),
+                          quad.p1.c.B(), alpha);
+    }
+#else
+    // "SIMD within a register": pack R (byte 0) and B (byte 2) into
+    // 16-bit lanes of a uint32_t and blend both with one multiply + shift.
     //
     // On little-endian the color32_t {r,g,b,a} word layout is 0xAABBGGRR,
     // so (word & 0x00FF00FF) extracts R and B in separate 16-bit lanes.
@@ -211,7 +232,6 @@ void renderQuadCore(texture_t<SCREEN> &screen,
     const uint32_t src_rb_a = ((uint32_t)quad.p1.c.R() * alpha) |
                               (((uint32_t)quad.p1.c.B() * alpha) << 16);
     const uint32_t src_g_a  = (uint32_t)quad.p1.c.G() * alpha;
-    const POS width = rx.max - rx.min;
     for (POS y = ry.min; y < ry.max; ++y)
     {
       uint32_t *row = reinterpret_cast<uint32_t *>(
@@ -226,6 +246,7 @@ void renderQuadCore(texture_t<SCREEN> &screen,
         row[x] = out_rb | (out_g << 8) | (dst & 0xFF000000U);
       }
     }
+#endif
   }
 }
 
